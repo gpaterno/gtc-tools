@@ -1,0 +1,11 @@
+#!/bin/sh
+
+#
+# Install the system in a partition
+# * Check that the specified parm is a partition
+# * Ask for "are you sure? Deleting everything"
+# * Format vfat partition
+# * syslinux -i /dev/mypartition
+# * copy /cdrom in /mnt (or wherever)
+# * umount ; sync
+#
