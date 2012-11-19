@@ -33,7 +33,7 @@ MS_RDONLY  = 1
 LINUX_LIBC = "libc.so.6"
 MOUNTPOINT = "/cdrom"
 BASEURL    = "http://www.pontiradio.org/gtc/"
-ISOFILE	   = "gippa.iso"
+ISOFILE    = "gippa.iso"
 TMPDIR     = "/cdrom/$$tmpdir"
 LOGFMT     = "%(levelname)s: %(message)s"
 
@@ -55,25 +55,22 @@ if __name__ == '__main__':
 	libc = cdll.LoadLibrary(LINUX_LIBC)
 
 	## Let's remount the filesystem in read-write
+	logger.debug("Remounting RW /cdrom")
 	if libc.mount(None, "/cdrom", None, MS_REMOUNT, None) != 0:
-		print "Cannot remount filesystem in read-write, mount operation failed"
+		logger.error("Cannot remount filesystem in read-write, mount operation failed")
 		exit(1)
 
 	# Check if the filesystem is in read-write
 	# mount operation returns 0 also if it's on a CD, so let's check
 	# if we are in read-write
+	logger.debug("Check if /cdrom is really in RW")
 	if os.statvfs("/cdrom")[8] & MS_RDONLY:
-		print "You're running from a CD (or we're having problem mounting)"
+		logger.error("You're running from a CD (or we're having problem mounting)")
 		exit(1)
-
-        ## 
-	## PLACEHOLDER: download RELEASE file and check
-	## it's newer
-	##
 
         ## Removing if temp dir exists 
 	if os.path.exists(TMPDIR):
-		logger.debug("Removing %s as it exists" % TMPDIR)
+		logger.debug("Removing %s and subdir as it exists" % TMPDIR)
 		shutil.rmtree(TMPDIR)
 
         ## (Re)create a temp dir for downloading ISO
@@ -81,19 +78,25 @@ if __name__ == '__main__':
 	os.makedirs(TMPDIR)
 
         ## Download the ISO
-	logger.debug("Attempting to download from %s/%s" % (BASEURL, "/gippa.iso"))
-	filename = "%s/%s" % (TMPDIR, ISOFILE)
-	iso = open(filename, "wb")
-	dwnld = pycurl.Curl()
-        dwnld.setopt(pycurl.URL, BASEURL + ISOFILE)
-	dwnld.setopt(pycurl.NOPROGRESS, 0)
-        dwnld.setopt(pycurl.PROGRESSFUNCTION, iso_progress)
-	dwnld.setopt(pycurl.WRITEDATA, iso)
-	dwnld.perform()
-	dwnld.close()
-	iso.close()
+	try:
+		logger.debug("Attempting to download from %s/%s to %s/%s" % (BASEURL, ISOFILE, TMPDIR, ISOFILE))
+		iso = open(TMPDIR + "/" + ISOFILE, "wb")
+		dwnld = pycurl.Curl()
+        	dwnld.setopt(pycurl.URL, BASEURL + ISOFILE)
+		dwnld.setopt(pycurl.NOPROGRESS, 0)
+        	dwnld.setopt(pycurl.PROGRESSFUNCTION, iso_progress)
+		dwnld.setopt(pycurl.WRITEDATA, iso)
+		dwnld.perform()
+		dwnld.close()
+		iso.close()
+	except pycurl.error, e:
+		logger.error("Download failed: %s" % e[1])
+	finally:
+		dwnld.close()
+		iso.close()
 
 	## Reset the filesystem in read-only
+	logger.debug("Remount /cdrom in RO")
 	if libc.mount(None, "/cdrom", None, MS_REMOUNT+MS_RDONLY, None) != 0:
-		print "Cannot remount filesystem in read-only, mount operation failed"
+		logger.error("Cannot remount filesystem in read-only, mount operation failed")
 		exit(1)
