@@ -9,3 +9,5 @@
 # * copy /cdrom in /mnt (or wherever)
 # * umount ; sync
 #
+# Ref: https://wiki.ubuntu.com/LiveUsbPendrivePersistent
+#
