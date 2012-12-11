@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/bash 
 
 #
 # Install the system in a partition
@@ -8,17 +8,202 @@
 # * syslinux -i /dev/mypartition
 # * copy /cdrom in /mnt (or wherever)
 # * umount ; sync
-# sudo mount dev/sdXY /mnt
-# sudo grub-install --recheck --root-directory=/mnt /dev/sdZ
-#
-# set timeout=3
-#
-# menuentry "Lucid ISO" {
-# loopback loop (hd0,1)/boot/iso/ubuntu-10.04-desktop-i386.iso
-# linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/boot/iso/ubuntu-10.04-desktop-i386.iso noprompt noeject
-# initrd (loop)/casper/initrd.lz
-# }
 #
 # Ref: https://wiki.ubuntu.com/LiveUsbPendrivePersistent
-# Ref: http://askubuntu.com/questions/141940/how-to-boot-live-iso-images
 #
+
+# TODO:
+#       Global vars
+#       check errors
+# 
+
+# sudo ./gtc-install -d /dev/sdb1 -c /home/alorenzi/gtc.conf -i /home/alorenzi/gippa.iso -t ./tmp
+
+
+dev=""
+iso=""
+conf=""
+tmp=""
+isolocation="http://172.16.212.1/~gpaterno/gippa.iso"
+conflocation="http://172.16.212.1/~gpaterno/gtc.conf"
+
+helper(){
+	echo "Usage: $0 -d device [-t tempdir] [-i iso]"
+	echo "$ sudo ./gtc-install -d /dev/sdb1 -i /home/alorenzi/gippa.iso -t ./tmp"
+	exit 1
+}
+
+ckerror(){
+	if [[ $? -ne 0 ]]
+	then
+		echo "ERROR: $1 fallito"
+		exit 1
+	fi
+}
+
+permission(){
+	if [ `whoami` != root ]
+	then
+		echo "I need to format, mount, delete and some other root stuff. Be root! Try:"
+		echo "# sudo $0"
+		echo "# su -c \"$0\" "
+		exit 1
+	fi
+
+}
+
+set_options(){
+
+	while getopts ":d:i:t:c:" opt; do
+		case $opt in
+		d)
+			dev=$OPTARG
+			;;
+		i)
+			iso=$OPTARG
+			;;
+		t)
+			tmp=$OPTARG
+			;;
+		c)
+			conf=$OPTARG
+			;;
+		\?)
+			echo "Invalid option: -$OPTARG" >&2
+			exit 1
+			;;
+		:)
+			echo "Option -$OPTARG requires an argument." >&2
+			exit 1
+			;;
+		esac
+	done
+
+	if [ "$dev" == "" ]
+	then 
+		helper
+	fi
+	
+	if [ $tmp == "" ]
+	then
+		tmp=`mktemp -d`
+		ckerror "creazione directory temporanea"
+		
+	else
+		mkdir -p $tmp
+		tmp=`realpath $tmp`
+		if [[ -d $tmp ]]
+		then
+			echo -n ""
+		else
+			echo "ERROR: creazione della directory temporanea"
+			return 1
+		fi
+	fi 
+}
+
+verify_dev (){
+	if [[ `file $dev | grep block | wc -l` -eq 0 ]]
+	then
+		echo "ERROR: $dev is not a block device"
+		echo "exiting"
+		exit 1
+	fi
+}
+
+formatting (){
+	echo "I'm going to formatting $dev. Well, this will destroy everything"
+	echo "No remorse, no regrets"
+	echo -n "Type yes is you want to format, else ^C : "
+
+	read verify
+	# yes to uppercase/lowercase
+	while [ `echo "$verify" |sed 's/.*/\U&/'|  sed 's/^ *//g' | sed 's/ *$//g' ` != "YES" ]
+	do
+		echo -n "Type yes is you want to format, else ^C : "
+		read verify			
+	done
+	
+	echo "Ok, I'll continue"
+	echo -n "Formattazione ............. " 
+	mkfs.vfat $dev -n "GTC" > /dev/null
+	echo "done"
+	
+	ckerror "formattazione"
+	
+
+	
+ 
+}
+
+downloadiso(){
+	if [[ !(-f "$iso") ]]
+	then	
+		wget $isolocation -O $tmp/gippa.iso
+		# da salvare in file temporaneo, poi se ok [sha1 sum] copiare
+		ckerror "download iso"
+		iso=$tmp/gippa.iso
+	fi
+}
+
+downloadconf(){
+	if [[ !(-f "$iso") ]]
+	then
+		wget $conflocation -O $tmp/gtc.conf
+		ckerror "download config"
+		conf=$tmp/gtc.conf
+	fi
+}
+
+ckiso(){
+	sha1iso=`sha1sum $iso| cut -f 1 -d " "`
+	sha1conf=`cat $conf | grep sha1 | cut -f2 -d "=" |  sed 's/^ *//g' | sed 's/ *$//g'`
+	if [[ $sha1iso != $sha1conf ]]
+	then
+		echo "$sha1iso $sha1conf"
+		echo "ERROR: sha1 don't match"
+		exit 1
+	fi
+}
+
+mnt_and_cpy()
+{
+	mkdir $tmp/destination
+	mount $dev $tmp/destination
+	ckerror "mountaggio $dev"
+
+	echo -n "Copying stuff ............. "
+	cp $iso $tmp/destination
+	ckerror "copiatura iso"
+	echo "done!"
+
+	echo -n "Grubbizzazione ............ "
+	grub2-install  /dev/sdb1  --boot-directory=$tmp/destination/boot --force --no-floppy 2> /dev/null
+	ckerror "grubbizzazione"
+	echo "done"
+}
+
+umnt_and_deltmp()
+{
+	echo -n "Smontaggio destinazione ... "
+	sync
+	umount $dev
+	ckerror "smontaggio $dev"
+	echo "done"
+	
+	rm -rf $tmp
+	ckerror "cancellazione cartella temporanea"
+}
+
+
+
+permission
+set_options "$@"
+verify_dev
+formatting
+downloadiso
+downloadconf
+ckiso
+mnt_and_cpy
+umnt_and_deltmp
+
