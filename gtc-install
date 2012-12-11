@@ -17,19 +17,26 @@
 #       check errors
 # 
 
-# sudo ./gtc-install -d /dev/sdb1 -c /home/alorenzi/gtc.conf -i /home/alorenzi/gippa.iso -t ./tmp
+# sudo ./gtc-install -d /dev/sdb -c /home/alorenzi/gtc.conf -i /home/alorenzi/gippa.iso -t ./tmp
 
 
 dev=""
 iso=""
 conf=""
 tmp=""
-isolocation="http://172.16.212.1/~gpaterno/gippa.iso"
-conflocation="http://172.16.212.1/~gpaterno/gtc.conf"
+isoname="gtc.iso"
+confname="gtc.conf"
+
+#if grub<2 then grub="" ; if grub >= 2.0 then grub="2"
+grubv="2"
+
+host="gtc.garl.ch"
+isolocation="http://${host}/iso/$isoname"
+conflocation="http://${host}/conf/$confname"
 
 helper(){
 	echo "Usage: $0 -d device [-t tempdir] [-i iso]"
-	echo "$ sudo ./gtc-install -d /dev/sdb1 -i /home/alorenzi/gippa.iso -t ./tmp"
+	echo "$ sudo ./gtc-install -d /dev/sdb -i /home/alorenzi/gippa.iso -t ./tmp"
 	exit 1
 }
 
@@ -84,7 +91,7 @@ set_options(){
 		helper
 	fi
 	
-	if [ $tmp == "" ]
+	if [ "$tmp" == "" ]
 	then
 		tmp=`mktemp -d`
 		ckerror "creazione directory temporanea"
@@ -103,16 +110,16 @@ set_options(){
 }
 
 verify_dev (){
-	if [[ `file $dev | grep block | wc -l` -eq 0 ]]
+	if [[ `file ${dev}1 | grep block | wc -l` -eq 0 ]]
 	then
-		echo "ERROR: $dev is not a block device"
+		echo "ERROR: ${dev}1 is not a block device"
 		echo "exiting"
 		exit 1
 	fi
 }
 
 formatting (){
-	echo "I'm going to formatting $dev. Well, this will destroy everything"
+	echo "I'm going to formatting ${dev}1. Well, this will destroy everything"
 	echo "No remorse, no regrets"
 	echo -n "Type yes is you want to format, else ^C : "
 
@@ -126,7 +133,7 @@ formatting (){
 	
 	echo "Ok, I'll continue"
 	echo -n "Formattazione ............. " 
-	mkfs.vfat $dev -n "GTC" > /dev/null
+	mkfs.vfat ${dev}1 -n "GTC" > /dev/null
 	echo "done"
 	
 	ckerror "formattazione"
@@ -139,19 +146,19 @@ formatting (){
 downloadiso(){
 	if [[ !(-f "$iso") ]]
 	then	
-		wget $isolocation -O $tmp/gippa.iso
+		wget $isolocation -O $tmp/$isoname
 		# da salvare in file temporaneo, poi se ok [sha1 sum] copiare
 		ckerror "download iso"
-		iso=$tmp/gippa.iso
+		iso=$tmp/$isoname
 	fi
 }
 
 downloadconf(){
-	if [[ !(-f "$iso") ]]
+	if [[ !(-f "$conf") ]]
 	then
-		wget $conflocation -O $tmp/gtc.conf
+		wget $conflocation -O $tmp/$confname
 		ckerror "download config"
-		conf=$tmp/gtc.conf
+		conf=$tmp/$confname
 	fi
 }
 
@@ -169,17 +176,30 @@ ckiso(){
 mnt_and_cpy()
 {
 	mkdir $tmp/destination
-	mount $dev $tmp/destination
-	ckerror "mountaggio $dev"
+	mount ${dev}1 $tmp/destination
+	ckerror "mountaggio ${dev}1"
 
 	echo -n "Copying stuff ............. "
 	cp $iso $tmp/destination
 	ckerror "copiatura iso"
-	echo "done!"
+	echo "done"
 
 	echo -n "Grubbizzazione ............ "
-	grub2-install  /dev/sdb1  --boot-directory=$tmp/destination/boot --force --no-floppy 2> /dev/null
+	grub${grubv}-install $dev --boot-directory=$tmp/destination/boot --force --no-floppy 2> /dev/null
 	ckerror "grubbizzazione"
+
+	# sorry for bad indentation. 
+	cat > $tmp/destination/boot/grub${grubv}/grub.cfg <<EOCAT
+set timeout=3
+menuentry "Gippa Thin Client" {
+insmod fat
+loopback loop (hd0,1)/$isoname
+linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/$isoname quiet splash --
+initrd (loop)/casper/initrd.lz
+}
+EOCAT
+
+	
 	echo "done"
 }
 
@@ -187,8 +207,8 @@ umnt_and_deltmp()
 {
 	echo -n "Smontaggio destinazione ... "
 	sync
-	umount $dev
-	ckerror "smontaggio $dev"
+	umount ${dev}1
+	ckerror "smontaggio ${dev}1"
 	echo "done"
 	
 	rm -rf $tmp
