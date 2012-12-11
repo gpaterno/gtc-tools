@@ -8,6 +8,17 @@
 # * syslinux -i /dev/mypartition
 # * copy /cdrom in /mnt (or wherever)
 # * umount ; sync
+# sudo mount dev/sdXY /mnt
+# sudo grub-install --recheck --root-directory=/mnt /dev/sdZ
+#
+# set timeout=3
+#
+# menuentry "Lucid ISO" {
+# loopback loop (hd0,1)/boot/iso/ubuntu-10.04-desktop-i386.iso
+# linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/boot/iso/ubuntu-10.04-desktop-i386.iso noprompt noeject
+# initrd (loop)/casper/initrd.lz
+# }
 #
 # Ref: https://wiki.ubuntu.com/LiveUsbPendrivePersistent
+# Ref: http://askubuntu.com/questions/141940/how-to-boot-live-iso-images
 #
