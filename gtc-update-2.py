@@ -45,9 +45,12 @@ isoname="gtc.iso"
 confname="gtc.conf"
 localconf="/mnt/etc/liveimg.conf"
 host="gtc.garl.ch"
-isolocation="http://%s/iso/%s" % (host, isoname)
+#isolocation="http://%s/iso/%s" % (host, isoname)
+# !!!! SOLO PER VELOCIZZARE DEBUG !!!!
+isolocation="http://192.168.100.1/iso/%s" %  isoname
+
 conflocation="http://%s/conf/%s" % (host, confname)
-tmpdir     = mkdtemp()
+tmpdir     = None
 
 def ckroot():
 	from getpass import getuser
@@ -87,6 +90,10 @@ def mount_device():
 		logger.error("Unable to mount the ISO image")
 		exit(1)
 
+def create_tmpdir():
+	global tmpdir
+	tmpdir = mkdtemp(prefix='update', dir="/mnt/tmp")
+
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
 	conf = ConfigParser.RawConfigParser()
@@ -119,7 +126,7 @@ def downloadiso():
 		print ""        # print empty line
 		dwnld.close()
 		iso.close()
-
+		logger.debug("Download completed")
 		
 def cksumiso():
 	
@@ -129,19 +136,25 @@ def cksumiso():
 	conf = ConfigParser.RawConfigParser()
 	conf.read("%s/%s"%(tmpdir, confname))
 	
-	if (conf.get("gtc","hash") != isohash):
+	if (conf.get("gtc","sha1") != isohash):
 		logger.error("Error downloading iso, corrupted.")
 		exit(1)
 	logger.debug("ckiso OK")
 	
 def replace_iso():
 	logger.debug("Replacing existing installation")
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname), "/mnt"]) != 0:
-		logger.error("Unable to replace the ISO image")
-		exit(1)
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname), localconf]) != 0:
+	
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "/mnt/%s"% isoname]) != 0:
 		logger.error("Unable to replace the conf file")
 		exit(1)
+		
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, confname),"/mnt/etc/liveimg.conf"]) != 0:
+		logger.error("Unable to replace the conf file")
+		exit(1)
+
+		
+	logger.debug("Replaced.")
+
 
 
 if __name__ == '__main__':
@@ -156,6 +169,7 @@ if __name__ == '__main__':
 
 	ckroot()
 	mount_device()
+	create_tmpdir()
 	download_config()
 	ckrelease()
 	downloadiso()
