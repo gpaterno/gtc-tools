@@ -43,10 +43,19 @@ partition = "/dev/sda1"
 logfmt     = "%(levelname)s: %(message)s"
 isoname="gtc.iso"
 confname="gtc.conf"
+localconf="/mnt/etc/liveimg.conf"
 host="gtc.garl.ch"
 isolocation="http://%s/iso/%s" % (host, isoname)
 conflocation="http://%s/conf/%s" % (host, confname)
 tmpdir     = mkdtemp()
+
+def ckroot():
+	from getpass import getuser
+	if (getuser()!="root"):
+		logger.error("You are not root!")
+		logger.error("Try su or sudo")
+		exit(1)
+	logger.debug("You are root. Yuppi!")
 
 def dl_progress(download_t, download_d, upload_t, upload_d):
 	if float(download_t) != 0:
@@ -78,19 +87,19 @@ def mount_device():
 		logger.error("Unable to mount the ISO image")
 		exit(1)
 
-def ckversion():
+def ckrelease():
 	# confronto tra la versione sul server e versione installata
 	conf = ConfigParser.RawConfigParser()
 	conf.read("%s/%s"%(tmpdir, confname))
 
 	conf_old=ConfigParser.RawConfigParser()
-	conf_old.read("/mnt/etc/liveimg.conf")
+	conf_old.read(localconf)
 
-	if (conf.getint("gtc","version")<=conf_old("gtc","version")):
+	if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
 		logger.error("You are running an up-to-date verson!")
 		logger.error("Be happy!")
 		exit(1)
-	logger.debug("Your version is old. Go on.")
+	logger.debug("Your release is old. Go on.")
 
 def downloadiso():
 	# download ISO
@@ -111,10 +120,27 @@ def downloadiso():
 		dwnld.close()
 		iso.close()
 
+		
+def cksumiso():
+	
+	logger.debug("Check sha1 iso")
+	isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
+
+	conf = ConfigParser.RawConfigParser()
+	conf.read("%s/%s"%(tmpdir, confname))
+	
+	if (conf.get("gtc","hash") != isohash):
+		logger.error("Error downloading iso, corrupted.")
+		exit(1)
+	logger.debug("ckiso OK")
+	
 def replace_iso():
 	logger.debug("Replacing existing installation")
 	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname), "/mnt"]) != 0:
 		logger.error("Unable to replace the ISO image")
+		exit(1)
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname), localconf]) != 0:
+		logger.error("Unable to replace the conf file")
 		exit(1)
 
 
@@ -128,14 +154,16 @@ if __name__ == '__main__':
     ## Load the libc to call mount
 	libc = cdll.LoadLibrary(LINUX_LIBC)
 
-	
+	ckroot()
 	mount_device()
 	download_config()
-	ckversion()
-	download_iso()
+	ckrelease()
+	downloadiso()
+	cksumiso()
 	replace_iso()
 	
 	logger.info("All done.")
+	logger.info("Please reboot ASAP!.")
 
 
 
