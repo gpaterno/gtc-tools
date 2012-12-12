@@ -1,5 +1,8 @@
 #!/usr/bin/bash 
-
+#
+# GTC Installer
+# (c) 2012 Alessandro "alorenzi" Lorenzi (alorenzi@garl.ch)
+# Tool to install the GTC (Gippa Thin Client) in a partition.
 #
 # Install the system in a partition
 # * Check that the specified parm is a partition
@@ -10,12 +13,8 @@
 # * umount ; sync
 #
 # Ref: https://wiki.ubuntu.com/LiveUsbPendrivePersistent
-#
 
-# TODO:
-#       Global vars
-#       check errors
-# 
+
 
 # sudo ./gtc-install -d /dev/sdb -c /home/alorenzi/gtc.conf -i /home/alorenzi/gippa.iso -t ./tmp
 
@@ -181,10 +180,13 @@ mnt_and_cpy()
 	ckerror "mountaggio ${dev}1"
 
 	echo -n "Copying stuff ............. "
-	cp $iso $tmp/destination
-	ckerror "copiatura iso"
-	mktmp -p $tmp/destination/etc/
+	cp $iso $tmp/destination/$isoname
+	ckerror "copia iso"
+	mkdir -p $tmp/destination/etc/
 	cp $conf  $tmp/destination/etc/liveimg.conf
+	ckerror "copia configurazione"
+	mkdir -p $tmp/destination/mnt
+	mkdir -p $tmp/destination/
 	echo "done"
 
 	echo -n "Grubbizzazione ............ "
