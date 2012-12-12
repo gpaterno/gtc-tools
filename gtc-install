@@ -24,12 +24,13 @@ dev=""
 iso=""
 conf=""
 tmp=""
-isoname="gtc.iso"
-confname="gtc.conf"
+
 
 #if grub<2 then grub="" ; if grub >= 2.0 then grub="2"
 grubv="2"
 
+isoname="gtc.iso"
+confname="gtc.conf"
 host="gtc.garl.ch"
 isolocation="http://${host}/iso/$isoname"
 conflocation="http://${host}/conf/$confname"
@@ -182,6 +183,8 @@ mnt_and_cpy()
 	echo -n "Copying stuff ............. "
 	cp $iso $tmp/destination
 	ckerror "copiatura iso"
+	mktmp -p $tmp/destination/etc/
+	cp $conf  $tmp/destination/etc/liveimg.conf
 	echo "done"
 
 	echo -n "Grubbizzazione ............ "
