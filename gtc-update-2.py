@@ -39,7 +39,6 @@ MS_REMOUNT = 32
 MS_RDONLY  = 1
 LINUX_LIBC = "libc.so.6"
 
-partition = "/dev/sda1"
 logfmt     = "%(levelname)s: %(message)s"
 isoname="gtc.iso"
 confname="gtc.conf"
@@ -51,6 +50,7 @@ isolocation="http://192.168.100.1/iso/%s" %  isoname
 
 conflocation="http://%s/conf/%s" % (host, confname)
 tmpdir     = None
+disklbl="GTC"
 
 def ckroot():
 	from getpass import getuser
@@ -86,7 +86,7 @@ def download_config():
 
 
 def mount_device():
-	if subprocess.call(['mount', partition, "/mnt"]) != 0:
+	if subprocess.call(['mount', "-L" , disklbl, "/mnt"]) != 0:
 		logger.error("Unable to mount the ISO image")
 		exit(1)
 
