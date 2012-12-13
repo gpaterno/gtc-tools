@@ -87,7 +87,7 @@ def getconf():
 		localrelease="%s/etc/%s" % (mountlocation, releasename)
 		     
 	if (conf.has_option("gtc","remoteiso") ):
-		remoteiso = "%s/%s" (conf.get("gtc","remoteiso"), isoname)
+		remoteiso = "%s/%s" % (conf.get("gtc","remoteiso"), isoname)
 	else:
 		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
 

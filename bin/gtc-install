@@ -29,14 +29,15 @@ tmp=""
 grubv="2"
 
 isoname="gtc.iso"
-confname="gtc.conf"
-host="gtc.garl.ch"
+confname="gtc.release"
+#host="gtc.garl.ch"
+host=192.168.100.1
 isolocation="http://${host}/iso/$isoname"
 conflocation="http://${host}/conf/$confname"
 
 helper(){
 	echo "Usage: $0 -d device [-t tempdir] [-i iso]"
-	echo "$ sudo ./gtc-install -d /dev/sdb -i /home/alorenzi/gippa.iso -t ./tmp"
+	echo "$ sudo ./gtc-install -d /dev/sdb -i /home/alorenzi/gtc.iso -t ./tmp"
 	exit 1
 }
 
@@ -184,7 +185,7 @@ mnt_and_cpy()
 	ckerror "copia iso"
 	mkdir -p $tmp/destination/etc/
 	mkdir -p $tmp/destination/tmp/
-	cp $conf  $tmp/destination/etc/liveimg.conf
+	cp $conf  $tmp/destination/etc/gtc.release
 	ckerror "copia configurazione"
 	echo "done"
 
