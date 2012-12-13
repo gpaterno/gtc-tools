@@ -24,6 +24,7 @@
 
 import os
 import sys
+import re
 import shutil
 import logging
 import pycurl
@@ -52,16 +53,7 @@ def getconf():
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
 
-	global logfmt, localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
-
-	
-
-
-	if (conf.has_option("gtc","logfmt") ):
-		logfmt = conf.get("gtc","logfmt")
-	else:
-		logfmt     = "%(levelname)s: %(message)s"
-
+	global localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
 
 	if (conf.has_option("gtc","mountlocation") ):
 		mountlocation = conf.get("gtc","mountlocation")
@@ -79,17 +71,18 @@ def getconf():
 	else:
 		isoname = "gtc.iso"
 
-
 		     
 	if (conf.has_option("gtc","localconf") ):
-		localrelease = "%s/%s/%s" %(mountlocation, conf.get("gtc","") , releasename)
+		localrelease = "%s/%s/%s" % (mountlocation, conf.get("gtc","") , releasename)
 	else:
 		localrelease="%s/etc/%s" % (mountlocation, releasename)
 		     
 	if (conf.has_option("gtc","remoteiso") ):
 		remoteiso = "%s/%s" % (conf.get("gtc","remoteiso"), isoname)
+		logger.debug("Remote iso set to %s" % remoteiso)
 	else:
 		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
+		logger.debug("Loading default ISO location %s" % remoteiso)
 
 		     
 	if (conf.has_option("gtc","remoterelease") ):
@@ -141,32 +134,58 @@ def download_config():
 
 
 def mount_device():
+	## Check if it's not already mounted, maybe not finished
+	## right
+	allmounts = open("/proc/mounts").readlines()
+        for mount in allmounts:
+           if re.search(mountlocation, mount, re.IGNORECASE):
+	      device = mount.split(" ")[0]
+              logger.warning("%s already mounted on %s, skip" % (mountlocation, device))
+              return False
+
+        ## Execute mount
 	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
 		exit(1)
 
+def umount_device():
+	## We do not check the return value, just fails silenty
+	subprocess.call(['umount', mountlocation])
+
+
 def create_tmpdir():
 	global tmpdir
-	tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
+	tmpdir = mkdtemp(prefix='update', dir="%s/" % mountlocation)
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
-	conf = ConfigParser.RawConfigParser()
-	conf.read("%s/%s"%(tmpdir, releasename))
+	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
 
-	conf_old=ConfigParser.RawConfigParser()
-	conf_old.read(localrelease)
+	try:
+	   conf = ConfigParser.RawConfigParser()
+	   conf.read("%s/%s"%(tmpdir, releasename))
 
-	if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
+           if os.path.isfile(localrelease):
+	      conf_old=ConfigParser.RawConfigParser()
+	      conf_old.read(localrelease)
+              local_releasedate = conf_old.getint("gtc","release")
+           else:
+              logger.debug("No local release file")
+              local_releasedate = 0
+
+	   if (conf.getint("gtc","release")<=local_releasedate):
 		logger.error("You are running an up-to-date verson!")
 		logger.error("Be happy!")
 		exit(1)
-	logger.debug("Your release is old. Go on.")
+	   logger.debug("Your release is old. Go on.")
+	except:
+	   logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
+	   exit(1)
 
 def downloadiso():
 	# download ISO
 	try:
-		logger.debug("Attempting to download ISO " )
+		logger.debug("Attempting to download ISO from %s" % remoteiso )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
 		dwnld = pycurl.Curl()
 		dwnld.setopt(pycurl.URL, remoteiso)
@@ -205,7 +224,7 @@ def replace_iso():
 		logger.error("Unable to replace the conf file")
 		exit(1)
 		
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), mountlocation ]) != 0:
 		logger.error("Unable to replace the conf file")
 		exit(1)
 
@@ -215,10 +234,14 @@ def replace_iso():
 
 
 if __name__ == '__main__':
-	getconf()
 
+	## Setup logging first
+	logfmt = " %(levelname)s: %(message)s"
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
 	logger = logging.getLogger("gtc-updater")
+
+	## Loading config
+	getconf()
 
 	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
@@ -232,7 +255,7 @@ if __name__ == '__main__':
 	downloadiso()
 	cksumiso()
 	replace_iso()
-	
+	umount_device()	
 	logger.info("All done.")
 	logger.info("Please reboot ASAP!")
 
