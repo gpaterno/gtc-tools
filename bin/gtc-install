@@ -183,10 +183,9 @@ mnt_and_cpy()
 	cp $iso $tmp/destination/$isoname
 	ckerror "copia iso"
 	mkdir -p $tmp/destination/etc/
+	mkdir -p $tmp/destination/tmp/
 	cp $conf  $tmp/destination/etc/liveimg.conf
 	ckerror "copia configurazione"
-	mkdir -p $tmp/destination/mnt
-	mkdir -p $tmp/destination/
 	echo "done"
 
 	echo -n "Grubbizzazione ............ "

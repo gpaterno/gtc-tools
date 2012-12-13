@@ -36,7 +36,7 @@ import ConfigParser
 	
 
 def getconf():
-	conffiles  = ['/etc/gtc/global.conf', os.getcwd() + '/global.conf']
+	conffiles  = ['/etc/gtc/global.ini', os.getcwd() + '/global.ini']
 	conf_found = 0
 
 	## Get Config File
@@ -62,6 +62,13 @@ def getconf():
 	else:
 		logfmt     = "%(levelname)s: %(message)s"
 
+
+	if (conf.has_option("gtc","mountlocation") ):
+		mountlocation = conf.get("gtc","mountlocation")
+	else:
+		mountlocation = "/mnt"
+
+
 	if (conf.has_option("gtc","releasename") ):
 		releasename = conf.get("gtc","releasename")
 	else:
@@ -80,7 +87,7 @@ def getconf():
 		localrelease="%s/etc/%s" % (mountlocation, releasename)
 		     
 	if (conf.has_option("gtc","remoteiso") ):
-		remoteiso = conf.get("gtc","remoteiso")+ "/" + isoname
+		remoteiso = "%s/%s" (conf.get("gtc","remoteiso"), isoname)
 	else:
 		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
 
@@ -88,7 +95,7 @@ def getconf():
 	if (conf.has_option("gtc","remoterelease") ):
 		remoterelease = conf.get("gtc","releaselocation")+ "/" + releasename
 	else:
-		remoterelease="http://gtc.garl.ch/conf/%s"  (releasename)
+		remoterelease="http://gtc.garl.ch/conf/%s" % (releasename)
 
 		     
 	if (conf.has_option("gtc","disklbl") ):
@@ -96,11 +103,6 @@ def getconf():
 	else:
 		disklbl="GTC"
 
-
-	if (conf.has_option("gtc","mountlocation") ):
-		mountlocation = conf.get("gtc","mountlocation")
-	else:
-		mountlocation = "/mnt"
 
 
 
@@ -122,15 +124,16 @@ def download_config():
 	# download config
 	try:
 		logger.debug("Attempting to download conf " )
-		conf = open("%s/%s"%(tmpdir, remoterelease), "wb")
+		conf = open("%s/%s"%(tmpdir, releasename), "wb")
 		dwnld = pycurl.Curl()
-        	dwnld.setopt(pycurl.URL, conflocation)
+		dwnld.setopt(pycurl.URL, remoterelease)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
-        	dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
+		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, conf)
 		dwnld.perform()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
+		exit(1)
 	finally:
 		print ""        # print empty line
 		dwnld.close()
@@ -166,19 +169,21 @@ def downloadiso():
 		logger.debug("Attempting to download ISO " )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
 		dwnld = pycurl.Curl()
-        	dwnld.setopt(pycurl.URL, remoteiso)
+		dwnld.setopt(pycurl.URL, remoteiso)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
-        	dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
+		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, iso)
 		dwnld.perform()
+		print ""        # print empty line
+		dwnld.close()
+		iso.close()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
 		exit(1)
 	finally:
-		print ""        # print empty line
-		dwnld.close()
-		iso.close()
 		logger.debug("Download completed")
+
+
 		
 def cksumiso():
 	
@@ -210,7 +215,6 @@ def replace_iso():
 
 
 if __name__ == '__main__':
-	ckroot()
 	getconf()
 
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
@@ -219,10 +223,8 @@ if __name__ == '__main__':
 	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
-    ## Load the libc to call mount
-	libc = cdll.LoadLibrary(LINUX_LIBC)
 	
-
+	ckroot()
 	mount_device()
 	create_tmpdir()
 	download_config()
