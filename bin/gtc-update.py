@@ -35,22 +35,74 @@ from tempfile import mkdtemp
 import ConfigParser
 	
 
-MS_REMOUNT = 32
-MS_RDONLY  = 1
-LINUX_LIBC = "libc.so.6"
+def getconf():
+	conffiles  = ['/etc/gtc/global.conf', os.getcwd() + '/global.conf']
+	conf_found = 0
 
-logfmt     = "%(levelname)s: %(message)s"
-isoname="gtc.iso"
-confname="gtc.conf"
-localconf="/mnt/etc/liveimg.conf"
-host="gtc.garl.ch"
-#isolocation="http://%s/iso/%s" % (host, isoname)
-# !!!! SOLO PER VELOCIZZARE DEBUG !!!!
-isolocation="http://192.168.100.1/iso/%s" %  isoname
+	## Get Config File
+	for conf in conffiles:
+		if os.path.isfile(conf):
+			myconfig   = conf
+			conf_found = 1
 
-conflocation="http://%s/conf/%s" % (host, confname)
-tmpdir     = None
-disklbl="GTC"
+	if conf_found == 0:
+		print "Unable to find configuration files"
+		sys.exit(1)
+
+	conf = ConfigParser.RawConfigParser()
+	conf.read( myconfig )
+
+	global logfmt, localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
+
+	
+
+
+	if (conf.has_option("gtc","logfmt") ):
+		logfmt = conf.get("gtc","logfmt")
+	else:
+		logfmt     = "%(levelname)s: %(message)s"
+
+	if (conf.has_option("gtc","releasename") ):
+		releasename = conf.get("gtc","releasename")
+	else:
+		releasename = "gtc.release"
+
+	if (conf.has_option("gtc","isoname") ):
+		isoname = conf.get("gtc","isoname")
+	else:
+		isoname = "gtc.iso"
+
+
+		     
+	if (conf.has_option("gtc","localconf") ):
+		localrelease = "%s/%s/%s" %(mountlocation, conf.get("gtc","") , releasename)
+	else:
+		localrelease="%s/etc/%s" % (mountlocation, releasename)
+		     
+	if (conf.has_option("gtc","remoteiso") ):
+		remoteiso = conf.get("gtc","remoteiso")+ "/" + isoname
+	else:
+		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
+
+		     
+	if (conf.has_option("gtc","remoterelease") ):
+		remoterelease = conf.get("gtc","releaselocation")+ "/" + releasename
+	else:
+		remoterelease="http://gtc.garl.ch/conf/%s"  (releasename)
+
+		     
+	if (conf.has_option("gtc","disklbl") ):
+		disklbl = conf.get("gtc","disklbl")
+	else:
+		disklbl="GTC"
+
+
+	if (conf.has_option("gtc","mountlocation") ):
+		mountlocation = conf.get("gtc","mountlocation")
+	else:
+		mountlocation = "/mnt"
+
+
 
 def ckroot():
 	from getpass import getuser
@@ -70,7 +122,7 @@ def download_config():
 	# download config
 	try:
 		logger.debug("Attempting to download conf " )
-		conf = open("%s/%s"%(tmpdir, confname), "wb")
+		conf = open("%s/%s"%(tmpdir, remoterelease), "wb")
 		dwnld = pycurl.Curl()
         	dwnld.setopt(pycurl.URL, conflocation)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
@@ -86,21 +138,21 @@ def download_config():
 
 
 def mount_device():
-	if subprocess.call(['mount', "-L" , disklbl, "/mnt"]) != 0:
+	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
 		exit(1)
 
 def create_tmpdir():
 	global tmpdir
-	tmpdir = mkdtemp(prefix='update', dir="/mnt/tmp")
+	tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
 	conf = ConfigParser.RawConfigParser()
-	conf.read("%s/%s"%(tmpdir, confname))
+	conf.read("%s/%s"%(tmpdir, releasename))
 
 	conf_old=ConfigParser.RawConfigParser()
-	conf_old.read(localconf)
+	conf_old.read(localrelease)
 
 	if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
 		logger.error("You are running an up-to-date verson!")
@@ -114,7 +166,7 @@ def downloadiso():
 		logger.debug("Attempting to download ISO " )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
 		dwnld = pycurl.Curl()
-        	dwnld.setopt(pycurl.URL, isolocation)
+        	dwnld.setopt(pycurl.URL, remoteiso)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
         	dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, iso)
@@ -134,7 +186,7 @@ def cksumiso():
 	isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
 
 	conf = ConfigParser.RawConfigParser()
-	conf.read("%s/%s"%(tmpdir, confname))
+	conf.read("%s/%s"%(tmpdir, releasename))
 	
 	if (conf.get("gtc","sha1") != isohash):
 		logger.error("Error downloading iso, corrupted.")
@@ -144,11 +196,11 @@ def cksumiso():
 def replace_iso():
 	logger.debug("Replacing existing installation")
 	
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "/mnt/%s"% isoname]) != 0:
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
 		logger.error("Unable to replace the conf file")
 		exit(1)
 		
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, confname),"/mnt/etc/liveimg.conf"]) != 0:
+	if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
 		logger.error("Unable to replace the conf file")
 		exit(1)
 
@@ -158,6 +210,9 @@ def replace_iso():
 
 
 if __name__ == '__main__':
+	ckroot()
+	getconf()
+
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
 	logger = logging.getLogger("gtc-updater")
 
@@ -166,8 +221,8 @@ if __name__ == '__main__':
 
     ## Load the libc to call mount
 	libc = cdll.LoadLibrary(LINUX_LIBC)
+	
 
-	ckroot()
 	mount_device()
 	create_tmpdir()
 	download_config()
@@ -177,7 +232,7 @@ if __name__ == '__main__':
 	replace_iso()
 	
 	logger.info("All done.")
-	logger.info("Please reboot ASAP!.")
+	logger.info("Please reboot ASAP!")
 
 
 
