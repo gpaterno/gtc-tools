@@ -29,13 +29,23 @@ import logging
 import pycurl
 import hashlib
 import subprocess
+import glob
+import shutil
 from ctypes import *
 
 from tempfile import mkdtemp
 import ConfigParser
 	
+def cleanup():
+	# rimuove le directory temporanee,
+	# da utilizzare prima di uscire dal programma
+	for filename in glob.glob("%s/tmp/update*" %mountlocation)
+		shutil.rmtree(filename)
 
 def getconf():
+	# legge i parametri dal file di configurazione, prima dal file locale,
+	# poi dal file in etc
+
 	conffiles  = ['/etc/gtc/global.ini', os.getcwd() + '/global.ini']
 	conf_found = 0
 
@@ -47,7 +57,8 @@ def getconf():
 
 	if conf_found == 0:
 		print "Unable to find configuration files"
-		sys.exit(1)
+		cleanup()
+		exit(1)
 
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
@@ -56,12 +67,10 @@ def getconf():
 
 	
 
+	logfmt     = "%(levelname)s: %(message)s"
+	localrelease="%s/%s" % (mountlocation, releasename)
 
-	if (conf.has_option("gtc","logfmt") ):
-		logfmt = conf.get("gtc","logfmt")
-	else:
-		logfmt     = "%(levelname)s: %(message)s"
-
+	# per ogni parametro prevedo un default.
 
 	if (conf.has_option("gtc","mountlocation") ):
 		mountlocation = conf.get("gtc","mountlocation")
@@ -81,10 +90,6 @@ def getconf():
 
 
 		     
-	if (conf.has_option("gtc","localconf") ):
-		localrelease = "%s/%s/%s" %(mountlocation, conf.get("gtc","") , releasename)
-	else:
-		localrelease="%s/etc/%s" % (mountlocation, releasename)
 		     
 	if (conf.has_option("gtc","remoteiso") ):
 		remoteiso = "%s/%s" % (conf.get("gtc","remoteiso"), isoname)
@@ -107,20 +112,25 @@ def getconf():
 
 
 def ckroot():
+	# check root, controllo che il tool stia girando
+	# in modalita' superuser.
+
 	from getpass import getuser
 	if (getuser()!="root"):
 		logger.error("You are not root!")
 		logger.error("Try su or sudo")
+		cleanup()
 		exit(1)
 	logger.debug("You are root. Yuppi!")
 
 def dl_progress(download_t, download_d, upload_t, upload_d):
+	# funzione di comodo per pycurl
 	if float(download_t) != 0:
 	    percentage = float(download_d)*100/float(download_t)
 	    print "Downloading: %s%% \r" % int(percentage),
 
 def download_config():
-	
+	# Download del file di release dal server.
 	# download config
 	try:
 		logger.debug("Attempting to download conf " )
@@ -133,6 +143,7 @@ def download_config():
 		dwnld.perform()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
+		cleanup()
 		exit(1)
 	finally:
 		print ""        # print empty line
@@ -141,30 +152,70 @@ def download_config():
 
 
 def mount_device():
+	# controllo se il dispositivo "GTC" e' gia montato
+	# altrimenti lo monto.
+	if os.path.ismount(mountlocation):
+		return 
+	
 	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
+		cleanup()
 		exit(1)
 
 def create_tmpdir():
+	# creazione della directory temporanea
+	# /mnt/tmp/update*
+
 	global tmpdir
-	tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
+	
+	if os.path.exists("%s/tmp"%mountlocation) ==False:
+		try:
+			os.mkdir("%s/tmp"%mountlocation)
+		except e:
+			logger.error("Error creating temp dir: %s"%e[1] )
+			cleanup()
+			exit(1)
+
+
+	try:
+		tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
+	except e:
+		logger.error("Unable to create temp dir: %s" % e[1] )
+		cleanup()
+		exit(1)
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
-	conf = ConfigParser.RawConfigParser()
-	conf.read("%s/%s"%(tmpdir, releasename))
-
-	conf_old=ConfigParser.RawConfigParser()
-	conf_old.read(localrelease)
-
-	if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
-		logger.error("You are running an up-to-date verson!")
-		logger.error("Be happy!")
+	try:
+		conf = ConfigParser.RawConfigParser()
+		conf.read("%s/%s"%(tmpdir, releasename))
+	except e:
+		logger.error("Error reading conf file %s" %e[1])
+		cleanup()
 		exit(1)
+
+	try:
+		conf_old=ConfigParser.RawConfigParser()
+		conf_old.read(localrelease)
+	except e:
+		logger.error("Error reading conf file %s" %e[1])
+		cleanup()
+		exit(1)
+	
+	try:
+		if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
+			logger.error("You are running an up-to-date verson!")
+			logger.error("Be happy!")
+			exit(0)
+	except  ConfigParser.Error e:
+		logger.error("Error reading config %s" %e[1])
+		cleanup()
+		exit(1)
+
 	logger.debug("Your release is old. Go on.")
 
 def downloadiso():
-	# download ISO
+	# download ISO dal server
 	try:
 		logger.debug("Attempting to download ISO " )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
@@ -179,6 +230,7 @@ def downloadiso():
 		iso.close()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
+		cleanup()
 		exit(1)
 	finally:
 		logger.debug("Download completed")
@@ -186,27 +238,48 @@ def downloadiso():
 
 		
 def cksumiso():
+	# controllo tramite sha1 dell'iso che il file non sia corrotto
+	try: 
+		logger.debug("Check sha1 iso")
+		isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
+	except e:
+		logger.error("Error calculating checksum: %s" %e[1])
 	
-	logger.debug("Check sha1 iso")
-	isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
-
-	conf = ConfigParser.RawConfigParser()
-	conf.read("%s/%s"%(tmpdir, releasename))
+	try:
+		conf = ConfigParser.RawConfigParser()
+		conf.read("%s/%s"%(tmpdir, releasename))
+	except e:
+                logger.error("Error reading config %s" %e[1])
 	
-	if (conf.get("gtc","sha1") != isohash):
-		logger.error("Error downloading iso, corrupted.")
+	try:
+		if (conf.get("gtc","sha1") != isohash):
+			logger.error("Error downloading iso, corrupted.")
+			cleanup()
+			exit(1)
+	except e:
+                logger.error("Error reading config %s" %e[1])
+		cleanup()
 		exit(1)
+	
 	logger.debug("ckiso OK")
 	
 def replace_iso():
+	# sovrascrivo l'iso con la nuova versione.
 	logger.debug("Replacing existing installation")
 	
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
-		logger.error("Unable to replace the conf file")
-		exit(1)
+	try:	
+		if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
+			logger.error("Unable to replace the conf file")
+			cleanup()
+			exit(1)
 		
-	if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
-		logger.error("Unable to replace the conf file")
+		if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
+			logger.error("Unable to replace the conf file")
+			cleanup()
+			exit(1)
+	except e:
+                logger.error("Error moving file  %s" %e[1])
+		cleanup()
 		exit(1)
 
 		
@@ -232,6 +305,8 @@ if __name__ == '__main__':
 	downloadiso()
 	cksumiso()
 	replace_iso()
+	
+	cleanup()	
 	
 	logger.info("All done.")
 	logger.info("Please reboot ASAP!")

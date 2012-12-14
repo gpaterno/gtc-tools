@@ -183,9 +183,7 @@ mnt_and_cpy()
 	echo -n "Copying stuff ............. "
 	cp $iso $tmp/destination/$isoname
 	ckerror "copia iso"
-	mkdir -p $tmp/destination/etc/
-	mkdir -p $tmp/destination/tmp/
-	cp $conf  $tmp/destination/etc/gtc.release
+	cp $conf  $tmp/destination/gtc.release
 	ckerror "copia configurazione"
 	echo "done"
 
