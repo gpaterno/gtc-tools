@@ -42,6 +42,7 @@ def cleanup():
 	# da utilizzare prima di uscire dal programma
 	for filename in glob.glob("%s/tmp/update*" %mountlocation)
 		shutil.rmtree(filename)
+	umount (mountlocation)
 
 def getconf():
 	# legge i parametri dal file di configurazione, prima dal file locale,
@@ -64,12 +65,11 @@ def getconf():
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
 
-	global logfmt, localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
+	global localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
 
 	
 
-	logfmt     = "%(levelname)s: %(message)s"
-	localrelease="%s/%s" % (mountlocation, releasename)
+	localrelease="/%s/%s" % (mountlocation, releasename)
 
 	# per ogni parametro prevedo un default.
 
@@ -89,7 +89,6 @@ def getconf():
 	else:
 		isoname = "gtc.iso"
 
-	localrelease="%s/%s" % (mountlocation, releasename)
 		     
 		     
 	if (conf.has_option("gtc","remoteiso") ):
@@ -201,34 +200,6 @@ def create_tmpdir():
 		cleanup()
 		exit(1)
 
-def ckrelease():
-	# confronto tra la versione sul server e versione installata
-	try:
-		conf = ConfigParser.RawConfigParser()
-		conf.read("%s/%s"%(tmpdir, releasename))
-	except e:
-		logger.error("Error reading conf file %s" %e[1])
-		cleanup()
-		exit(1)
-
-	try:
-		conf_old=ConfigParser.RawConfigParser()
-		conf_old.read(localrelease)
-	except e:
-		logger.error("Error reading conf file %s" %e[1])
-		cleanup()
-		exit(1)
-	
-	try:
-		if (conf.getint("gtc","release")<=conf_old.getint("gtc","release")):
-			logger.error("You are running an up-to-date verson!")
-			logger.error("Be happy!")
-			exit(0)
-	except  ConfigParser.Error e:
-		logger.error("Error reading config %s" %e[1])
-		exit(1)
-
-	logger.debug("Your release is old. Go on.")
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
