@@ -24,6 +24,7 @@
 
 import os
 import sys
+import re
 import shutil
 import logging
 import pycurl
@@ -88,13 +89,15 @@ def getconf():
 	else:
 		isoname = "gtc.iso"
 
-
+	localrelease="%s/%s" % (mountlocation, releasename)
 		     
 		     
 	if (conf.has_option("gtc","remoteiso") ):
 		remoteiso = "%s/%s" % (conf.get("gtc","remoteiso"), isoname)
+		logger.debug("Remote iso set to %s" % remoteiso)
 	else:
 		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
+		logger.debug("Loading default ISO location %s" % remoteiso)
 
 		     
 	if (conf.has_option("gtc","remoterelease") ):
@@ -154,20 +157,34 @@ def download_config():
 def mount_device():
 	# controllo se il dispositivo "GTC" e' gia montato
 	# altrimenti lo monto.
-	if os.path.ismount(mountlocation):
-		return 
+	#if os.path.ismount(mountlocation):
+	#	return 
 	
+	## Check if it's not already mounted, maybe not finished
+	## right
+	allmounts = open("/proc/mounts").readlines()
+        for mount in allmounts:
+           if re.search(mountlocation, mount, re.IGNORECASE):
+	      device = mount.split(" ")[0]
+              logger.warning("%s already mounted on %s, skip" % (mountlocation, device))
+              return False
+
+        ## Execute mount
 	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
 		cleanup()
 		exit(1)
+
+def umount_device():
+	## We do not check the return value, just fails silenty
+	subprocess.call(['umount', mountlocation])
+
 
 def create_tmpdir():
 	# creazione della directory temporanea
 	# /mnt/tmp/update*
 
 	global tmpdir
-	
 	if os.path.exists("%s/tmp"%mountlocation) ==False:
 		try:
 			os.mkdir("%s/tmp"%mountlocation)
@@ -209,15 +226,41 @@ def ckrelease():
 			exit(0)
 	except  ConfigParser.Error e:
 		logger.error("Error reading config %s" %e[1])
-		cleanup()
 		exit(1)
 
+	logger.debug("Your release is old. Go on.")
+
+def ckrelease():
+	# confronto tra la versione sul server e versione installata
+	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
+
+	try:
+		conf = ConfigParser.RawConfigParser()
+		conf.read("%s/%s"%(tmpdir, releasename))
+
+		if os.path.isfile(localrelease):
+			conf_old=ConfigParser.RawConfigParser()
+			conf_old.read(localrelease)
+			local_releasedate = conf_old.getint("gtc","release")
+		else:
+			logger.debug("No local release file")
+			local_releasedate = 0
+
+		if (conf.getint("gtc","release")<=local_releasedate):
+			logger.error("You are running an up-to-date verson!")
+			logger.error("Be happy!")
+			exit(1)
+	except:
+		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
+		cleanup()
+		exit(1)
+	
 	logger.debug("Your release is old. Go on.")
 
 def downloadiso():
 	# download ISO dal server
 	try:
-		logger.debug("Attempting to download ISO " )
+		logger.debug("Attempting to download ISO from %s" % remoteiso )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
 		dwnld = pycurl.Curl()
 		dwnld.setopt(pycurl.URL, remoteiso)
@@ -244,12 +287,16 @@ def cksumiso():
 		isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
 	except e:
 		logger.error("Error calculating checksum: %s" %e[1])
+		cleanup()
+		exit(1)
 	
 	try:
 		conf = ConfigParser.RawConfigParser()
 		conf.read("%s/%s"%(tmpdir, releasename))
 	except e:
                 logger.error("Error reading config %s" %e[1])
+		cleanup()
+		exit(1)
 	
 	try:
 		if (conf.get("gtc","sha1") != isohash):
@@ -288,10 +335,14 @@ def replace_iso():
 
 
 if __name__ == '__main__':
-	getconf()
 
+	## Setup logging first
+	logfmt = " %(levelname)s: %(message)s"
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
 	logger = logging.getLogger("gtc-updater")
+
+	## Loading config
+	getconf()
 
 	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
@@ -308,6 +359,7 @@ if __name__ == '__main__':
 	
 	cleanup()	
 	
+	umount_device()	
 	logger.info("All done.")
 	logger.info("Please reboot ASAP!")
 
