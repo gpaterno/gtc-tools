@@ -37,11 +37,6 @@ from ctypes import *
 from tempfile import mkdtemp
 import ConfigParser
 	
-def cleanup():
-	# rimuove le directory temporanee,
-	# da utilizzare prima di uscire dal programma
-	for filename in glob.glob("%s/tmp/update*" %mountlocation)
-		shutil.rmtree(filename)
 
 
 def getconf():
@@ -58,19 +53,13 @@ def getconf():
 			conf_found = 1
 
 	if conf_found == 0:
-		print "Unable to find configuration files"
-		cleanup()
-		umount_device()
-		exit(1)
+		logger.DEBUG("Unable to find configuration files")
+		return (0)
 
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
 
 	global localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
-
-	localrelease="/%s/%s" % (mountlocation, releasename)
-
-	# per ogni parametro prevedo un default.
 
 	if (conf.has_option("gtc","mountlocation") ):
 		mountlocation = conf.get("gtc","mountlocation")
@@ -78,10 +67,15 @@ def getconf():
 		mountlocation = "/mnt"
 
 
+
+	# per ogni parametro prevedo un default.
+
+
 	if (conf.has_option("gtc","releasename") ):
 		releasename = conf.get("gtc","releasename")
 	else:
 		releasename = "gtc.release"
+	localrelease="/%s/%s" % (mountlocation, releasename)
 
 	if (conf.has_option("gtc","isoname") ):
 		isoname = conf.get("gtc","isoname")
@@ -108,8 +102,17 @@ def getconf():
 		disklbl = conf.get("gtc","disklbl")
 	else:
 		disklbl="GTC"
+		
+	return(1)
 
 
+def cleanup():
+	# rimuove le directory temporanee,
+	# da utilizzare prima di uscire dal programma
+	for filename in glob.glob("%s/tmp/update*" % mountlocation):
+		shutil.rmtree(filename)
+		
+	return(1)
 
 
 def ckroot():
@@ -120,10 +123,9 @@ def ckroot():
 	if (getuser()!="root"):
 		logger.error("You are not root!")
 		logger.error("Try su or sudo")
-		cleanup()
-		umount_device()
-		exit(1)
+		return 0
 	logger.debug("You are root. Yuppi!")
+	return 1
 
 def dl_progress(download_t, download_d, upload_t, upload_d):
 	# funzione di comodo per pycurl
@@ -143,15 +145,15 @@ def download_config():
 		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, conf)
 		dwnld.perform()
-	except pycurl.error, e:
-		logger.error("Download failed: %s" % e[1])
-		cleanup()
-		umount_device()
-		exit(1)
-	finally:
 		print ""        # print empty line
 		dwnld.close()
 		conf.close()
+	except pycurl.error, e:
+		logger.error("Download failed: %s" % e[1])
+		return(0)
+		
+	return(1)
+		
 
 
 def mount_device():
@@ -163,22 +165,22 @@ def mount_device():
 	## Check if it's not already mounted, maybe not finished
 	## right
 	allmounts = open("/proc/mounts").readlines()
-        for mount in allmounts:
-           if re.search(mountlocation, mount, re.IGNORECASE):
-	      device = mount.split(" ")[0]
-              logger.warning("%s already mounted on %s, skip" % (mountlocation, device))
-              return False
+	for mount in allmounts:
+		if re.search(mountlocation, mount, re.IGNORECASE):
+			device = mount.split(" ")[0]
+			logger.warning("%s already mounted on %s, skip" % (mountlocation, device))
+			return 1
 
-        ## Execute mount
+	## Execute mount
 	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
-		cleanup()
-		umount_device()
-		exit(1)
+		return 0
+	return 1
 
 def umount_device():
 	## We do not check the return value, just fails silenty
 	subprocess.call(['umount', mountlocation])
+	return 1
 
 
 def create_tmpdir():
@@ -191,22 +193,20 @@ def create_tmpdir():
 			os.mkdir("%s/tmp"%mountlocation)
 		except e:
 			logger.error("Error creating temp dir: %s"%e[1] )
-			cleanup()
-			umount_device()
-			exit(1)
-
-
+			return 0
+	
 	try:
 		tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
 	except e:
 		logger.error("Unable to create temp dir: %s" % e[1] )
-		cleanup()
-		umount_device()
-		exit(1)
+		return 0
 
+	return 1
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
+	# ritorna 0 in caso di errore
+	#         1 in caso di release aggiornata
 	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
 
 	try:
@@ -224,15 +224,14 @@ def ckrelease():
 		if (conf.getint("gtc","release")<=local_releasedate):
 			logger.error("You are running an up-to-date verson!")
 			logger.error("Be happy!")
-			umount_device()
-			exit(1)
+			return (1)
+			
 	except:
 		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
-		cleanup()
-		umount_device()
-		exit(1)
+		return (0)
 	
 	logger.debug("Your release is old. Go on.")
+	return (2)
 
 def downloadiso():
 	# download ISO dal server
@@ -318,22 +317,22 @@ def replace_iso():
 	logger.debug("Replaced.")
 
 
+## Setup logging first
+logfmt = " %(levelname)s: %(message)s"
+logging.basicConfig(format=logfmt, level=logging.DEBUG)
+logger = logging.getLogger("gtc-updater")
+
 
 if __name__ == '__main__':
 
-	## Setup logging first
-	logfmt = " %(levelname)s: %(message)s"
-	logging.basicConfig(format=logfmt, level=logging.DEBUG)
-	logger = logging.getLogger("gtc-updater")
-
 	## Loading config
 	getconf()
-
 	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
 	
-	ckroot()
+	if ckroot() == 0:
+		exit (0)
 	mount_device()
 	create_tmpdir()
 	download_config()
