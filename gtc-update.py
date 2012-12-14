@@ -431,3 +431,4 @@ def qtinterface():
 
 	window = MainWindow()
 	window.run()
+	exit (0)
