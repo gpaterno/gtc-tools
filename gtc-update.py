@@ -42,7 +42,7 @@ def cleanup():
 	# da utilizzare prima di uscire dal programma
 	for filename in glob.glob("%s/tmp/update*" %mountlocation)
 		shutil.rmtree(filename)
-	umount (mountlocation)
+
 
 def getconf():
 	# legge i parametri dal file di configurazione, prima dal file locale,
@@ -60,14 +60,13 @@ def getconf():
 	if conf_found == 0:
 		print "Unable to find configuration files"
 		cleanup()
+		umount_device()
 		exit(1)
 
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
 
 	global localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
-
-	
 
 	localrelease="/%s/%s" % (mountlocation, releasename)
 
@@ -122,6 +121,7 @@ def ckroot():
 		logger.error("You are not root!")
 		logger.error("Try su or sudo")
 		cleanup()
+		umount_device()
 		exit(1)
 	logger.debug("You are root. Yuppi!")
 
@@ -146,6 +146,7 @@ def download_config():
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 	finally:
 		print ""        # print empty line
@@ -172,6 +173,7 @@ def mount_device():
 	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
 		logger.error("Unable to mount the ISO image")
 		cleanup()
+		umount_device()
 		exit(1)
 
 def umount_device():
@@ -190,6 +192,7 @@ def create_tmpdir():
 		except e:
 			logger.error("Error creating temp dir: %s"%e[1] )
 			cleanup()
+			umount_device()
 			exit(1)
 
 
@@ -198,6 +201,7 @@ def create_tmpdir():
 	except e:
 		logger.error("Unable to create temp dir: %s" % e[1] )
 		cleanup()
+		umount_device()
 		exit(1)
 
 
@@ -220,10 +224,12 @@ def ckrelease():
 		if (conf.getint("gtc","release")<=local_releasedate):
 			logger.error("You are running an up-to-date verson!")
 			logger.error("Be happy!")
+			umount_device()
 			exit(1)
 	except:
 		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
 		cleanup()
+		umount_device()
 		exit(1)
 	
 	logger.debug("Your release is old. Go on.")
@@ -245,6 +251,7 @@ def downloadiso():
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 	finally:
 		logger.debug("Download completed")
@@ -259,6 +266,7 @@ def cksumiso():
 	except e:
 		logger.error("Error calculating checksum: %s" %e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 	
 	try:
@@ -267,16 +275,19 @@ def cksumiso():
 	except e:
                 logger.error("Error reading config %s" %e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 	
 	try:
 		if (conf.get("gtc","sha1") != isohash):
 			logger.error("Error downloading iso, corrupted.")
 			cleanup()
+			umount_device()
 			exit(1)
 	except e:
                 logger.error("Error reading config %s" %e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 	
 	logger.debug("ckiso OK")
@@ -289,15 +300,18 @@ def replace_iso():
 		if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
 			logger.error("Unable to replace the conf file")
 			cleanup()
+			umount_device()
 			exit(1)
 		
 		if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
 			logger.error("Unable to replace the conf file")
 			cleanup()
+			umount_device()
 			exit(1)
 	except e:
                 logger.error("Error moving file  %s" %e[1])
 		cleanup()
+		umount_device()
 		exit(1)
 
 		
@@ -329,8 +343,8 @@ if __name__ == '__main__':
 	replace_iso()
 	
 	cleanup()	
+	umount_device()
 	
-	umount_device()	
 	logger.info("All done.")
 	logger.info("Please reboot ASAP!")
 
