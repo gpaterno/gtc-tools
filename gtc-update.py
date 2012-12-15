@@ -33,6 +33,12 @@ import subprocess
 import glob
 import shutil
 from ctypes import *
+from time import sleep
+
+from PyQt4 import QtCore
+from PyQt4 import QtGui
+
+
 
 from tempfile import mkdtemp
 import ConfigParser
@@ -145,7 +151,7 @@ def download_config():
 		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, conf)
 		dwnld.perform()
-		print ""        # print empty line
+		print ""		# print empty line
 		dwnld.close()
 		conf.close()
 	except pycurl.error, e:
@@ -191,22 +197,22 @@ def create_tmpdir():
 	if os.path.exists("%s/tmp"%mountlocation) ==False:
 		try:
 			os.mkdir("%s/tmp"%mountlocation)
-		except e:
-			logger.error("Error creating temp dir: %s"%e[1] )
+		except:
+			logger.error("Error creating temp dir" )
 			return 0
 	
 	try:
 		tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
-	except e:
-		logger.error("Unable to create temp dir: %s" % e[1] )
+	except:
+		logger.error("Unable to create temp dir" )
 		return 0
-
+	logger.debug("tmpdir = %s" %tmpdir)
 	return 1
 
 def ckrelease():
 	# confronto tra la versione sul server e versione installata
 	# ritorna 0 in caso di errore
-	#         1 in caso di release aggiornata
+	#		 1 in caso di release aggiornata
 	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
 
 	try:
@@ -244,7 +250,7 @@ def downloadiso():
 		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, iso)
 		dwnld.perform()
-		print ""        # print empty line
+		print ""		# print empty line
 		dwnld.close()
 		iso.close()
 	except pycurl.error, e:
@@ -272,7 +278,7 @@ def cksumiso():
 		conf = ConfigParser.RawConfigParser()
 		conf.read("%s/%s"%(tmpdir, releasename))
 	except e:
-                logger.error("Error reading config %s" %e[1])
+		logger.error("Error reading config %s" %e[1])
 		cleanup()
 		umount_device()
 		exit(1)
@@ -284,7 +290,7 @@ def cksumiso():
 			umount_device()
 			exit(1)
 	except e:
-                logger.error("Error reading config %s" %e[1])
+		logger.error("Error reading config %s" %e[1])
 		cleanup()
 		umount_device()
 		exit(1)
@@ -308,7 +314,7 @@ def replace_iso():
 			umount_device()
 			exit(1)
 	except e:
-                logger.error("Error moving file  %s" %e[1])
+		logger.error("Error moving file  %s" %e[1])
 		cleanup()
 		umount_device()
 		exit(1)
@@ -323,7 +329,7 @@ logging.basicConfig(format=logfmt, level=logging.DEBUG)
 logger = logging.getLogger("gtc-updater")
 
 
-def cmdline()
+def cmdline():
 	## Loading config
 	getconf()
 	## Welcome msg and warning
@@ -349,75 +355,82 @@ def cmdline()
 
 
 
-from PyQt4 import QtCore, QtGui
-from mainwindow import *
- 
-class MainWindow (object):
-	 
-	def __init__(self):
-		self.app = QtGui.QApplication([])
-		self.Dialog = QtGui.QMainWindow()
-		self.ui = Ui_MainWindow()
-		self.ui.setupUi(self.Dialog)
-		self.connections()
 
-	 
-	def connections(self):
-		#BUTTON CONNECTIONS
-		self.app.connect(self.ui.ckupdate, QtCore.SIGNAL("clicked()"), self.ckupdates)
-		 
-		 
-	def run(self):
-		self.Dialog.show()
-		self.app.exec_()
-		 
-	def clear(self):
-		self.ui.textEdit.clear()
-		self.ui.htmlEdit.clear()
-	 
-	def ckupdates(self):
-		rval = getconf() 
+class SystemTrayIcon(QtGui.QSystemTrayIcon):
+	def __init__(self, parent=None):
+		QtGui.QSystemTrayIcon.__init__(self, parent)
+
+		self.setIcon(QtGui.QIcon("icon.jpg"))
+
+		self.iconMenu = QtGui.QMenu(parent)
+		appckupdate = self.iconMenu.addAction("Check Update")
+		appupdate = self.iconMenu.addAction("Install new version")
+		appexit = self.iconMenu.addAction("Exit")
+		self.setContextMenu(self.iconMenu)
+
+		self.connect(appckupdate,QtCore.SIGNAL('triggered()'),self.ckupdates)
+		self.connect(appupdate,QtCore.SIGNAL('triggered()'),self.update)
+		self.connect(appexit,QtCore.SIGNAL('triggered()'),self.prgexit)
+		self.show()
+
+	def inizializza(self):
+		rval = getconf()
 		if rval != 1:
-			self.ui.lbloutput.setText("Impossibile trovare il file di configurazione\n")
-			self.ui.lbloutput.setText("Controlla l'esistenza di global.ini nella directory /etc/gtc/ \n")
-			return(0)
+			self.showMessage("Ooops!", "Impossibile trovare il file di configurazione\n Controlla l'esistenza di global.ini nella directory /etc/gtc/ ")
+			sleep(2)
+			return(False)
 
 		rval = ckroot()
 		if rval == 0:
-			self.ui.lbloutput.setText("Devi essere amministratore per eseguire l'aggiornamento del GTC")
-			return(0)
+			self.showMessage("Ooops!", "Devi essere amministratore per eseguire l'aggiornamento del GTC")
+			sleep(2)
+			return(False)
 
 		rval = 	mount_device()
 		if rval == 0:
-			self.ui.lbloutput.setText("Errore durante il mount del device")
-			return(0)
+			self.showMessage("Ooops!", "Errore durante il mount del device")
+			sleep(2)
+			return(False)
 					
 		rval = create_tmpdir()
 		if rval == 0:
-			self.ui.lbloutput.setText("Errore nella creazione della directory temporanea")
-			return(0)
+			self.showMessage("Ooops!", "Errore nella creazione della directory temporanea")
+			sleep(2)
+			return(False)
 
+
+	# Controllo dell'aggiornamento.
+	# Visualizza un messaggio in caso di aggiornamento disponibile
+	# Per il controllo automatico eseguire con parametro manual=False
+	def ckupdates(self, manual=True):
+		if self.inizializza() == False:
+			return(0)
+			
 		rval = download_config()
 		if rval == 0:
-			self.ui.lbloutput.setText("Errore nella creazione della directory temporanea")
+			self.showMessage("Ooops!", "Errore nella creazione della directory temporanea")
 			return(0)
-
 
 		rval = ckrelease()
 		if rval == 0:
-			self.ui.lbloutput.setText("Errore")
+			self.showMessage("Ooops!", "Errore di aggiornamento")
 			return (0)
-		elif rval == 1:
-			self.ui.lbloutput.setText("La release e' aggiornata")
+		elif rval == 1 and manual==True:
+			self.showMessage("GTC Updater", "La release e' aggiornata")
 			return(0)
 		elif rval == 2:
-			self.ui.lbloutput.setText("Devi aggiornare!")
+			self.showMessage("GTC Updater", "Devi aggiornare!")
 			# abilitare il tasto di avvio aggiornamento.
-			
-		 
-if __name__ == "__main__":
-	# da aggiungere controllo cmdline o qtinterface 
-	qtinterface()
+
+	# Funzione per eseguire l'update
+	def update(self):
+		self.showMessage("GTC Updater","Not implemented yet")
+
+	def prgexit(self):
+		cleanup()
+		exit(0)
+
+
 
 
 def qtinterface():
@@ -429,6 +442,13 @@ def qtinterface():
 	global logger
 	logger = logging.getLogger("gtc-updater")
 
-	window = MainWindow()
-	window.run()
-	exit (0)
+	app = QtGui.QApplication(sys.argv)
+	trayIcon = SystemTrayIcon()
+	trayIcon.show()
+	
+	sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+	# da aggiungere controllo cmdline o qtinterface 
+	qtinterface()
