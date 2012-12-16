@@ -18,3 +18,4 @@ gtc.schema.override -> Ovverrides for menus
 
 vmware/ -> Vmware specific configurations
 
+wireless-template -> /etc/NetworkManager/system-connections
