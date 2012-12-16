@@ -1,0 +1,5 @@
+[com.canonical.Unity.Launcher]
+favorites=['nautilus-home.desktop', 'chromium-browser.desktop', 'vmware-view-client.desktop']
+
+[com.canonical.Unity.Panel]
+systray-whitelist=['all']

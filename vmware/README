@@ -1,0 +1,4 @@
+Copy this to /etc/skel/ to configure the vmware view client automatically
+
+vmware-view-client.license-accepted -> /etc/skel/.vmware-view-client.license-accepted
+view-preferences -> /etc/skel/.vmware/view-preferences
