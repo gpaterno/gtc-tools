@@ -143,8 +143,10 @@ def dl_qt_progress(download_t, download_d, upload_t, upload_d):
 	# Function for pycurl
 	# TODO: all
 	if float(download_t) != 0:
-	    percentage = float(download_d)*100/float(download_t)
-	    print "Downloading: %s%% \r" % int(percentage),
+		global percentage
+		percentage = float(download_d)*100/float(download_t)
+		print "Downloading: %s%% \r" % int(percentage),
+	    
 
 def download_config():
 	# download release file
@@ -261,9 +263,7 @@ def downloadiso(qt=False):
 		iso.close()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
-		cleanup()
-		umount_device()
-		exit(1)
+
 	finally:
 		logger.debug("Download completed")
 
@@ -274,32 +274,23 @@ def cksumiso():
 	try: 
 		logger.debug("Check sha1 iso")
 		isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
-	except e:
-		logger.error("Error calculating checksum: %s" %e[1])
-		cleanup()
-		umount_device()
-		exit(1)
+	except:
+		logger.error("Error calculating checksum" )
+
 	
 	try:
 		conf = ConfigParser.RawConfigParser()
 		conf.read("%s/%s"%(tmpdir, releasename))
-	except e:
-		logger.error("Error reading config %s" %e[1])
-		cleanup()
-		umount_device()
-		exit(1)
+	except:
+		logger.error("Error reading config ")
+
 	
 	try:
 		if (conf.get("gtc","sha1") != isohash):
 			logger.error("Error downloading iso, corrupted.")
-			cleanup()
-			umount_device()
-			exit(1)
-	except e:
-		logger.error("Error reading config %s" %e[1])
-		cleanup()
-		umount_device()
-		exit(1)
+	except:
+		logger.error("Error reading config")
+		
 	
 	logger.debug("ckiso OK")
 	
@@ -319,8 +310,8 @@ def replace_iso():
 			cleanup()
 			umount_device()
 			exit(1)
-	except e:
-		logger.error("Error moving file  %s" %e[1])
+	except:
+		logger.error("Error moving file ")
 		cleanup()
 		umount_device()
 		exit(1)
@@ -430,9 +421,6 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 
 	# Exec to update
 	def update(self):
-		if self.initail_ck() == False:
-			return(0)
-
 
 		rval = downloadiso(qt=True)
 		if rval == 0:
@@ -466,14 +454,35 @@ def qtinterface():
 	app = QtGui.QApplication(sys.argv)
 	trayIcon = SystemTrayIcon()
 	trayIcon.show()
-	
-	sys.exit(app.exec_())
+	app.exec_()
+	sys.exit(0)
 
 
 if __name__ == "__main__":
+	import sys
+	import os
+	import subprocess
+	
 	## Setup logging first
 	logfmt = " %(levelname)s: %(message)s"
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
 	logger = logging.getLogger("gtc-updater")
-	# da aggiungere controllo cmdline o qtinterface 
-	qtinterface()
+
+	if os.getuid():
+
+		print "not root"
+		sudocmd = "/usr/bin/sudo"
+		if not os.path.exists(sudocmd):
+			logger.error("Cannot find sudo cmd")
+			exit(1)
+			
+			
+		command = "{} {}".format(sudocmd, " ".join(sys.argv))
+		command = command.split()
+		retcode = subprocess.call(command)
+		if retcode:
+			print("something wrong happened")
+	else:
+		print " now root" 
+		# TODO da aggiungere controllo cmdline o qtinterface 
+		qtinterface()
