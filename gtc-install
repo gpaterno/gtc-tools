@@ -18,6 +18,8 @@
 
 # sudo ./gtc-install -d /dev/sdb -c /home/alorenzi/gtc.conf -i /home/alorenzi/gippa.iso -t ./tmp
 
+## Trap any errors in the cleanup phase
+trap umnt_and_deltmp SIGTERM SIGHUP SIGINT
 
 dev=""
 iso=""
@@ -26,12 +28,19 @@ tmp=""
 
 
 #if grub<2 then grub="" ; if grub >= 2.0 then grub="2"
-grubv="2"
+## Checking grub version 
+if [ -x /usr/sbin/grub2-install ] 
+then
+   grubv="2"
+else
+   grubv=""
+fi
 
 isoname="gtc.iso"
 confname="gtc.release"
 host="gtc.garl.ch"
-isolocation="http://${host}/iso/$isoname"
+#isolocation="http://${host}/iso/$isoname"
+isolocation="http://172.16.212.1/~gpaterno/$isoname"
 conflocation="http://${host}/conf/$confname"
 
 helper(){
@@ -44,6 +53,9 @@ ckerror(){
 	if [[ $? -ne 0 ]]
 	then
 		echo "ERROR: $1 failed"
+		## Cleanup before leaving
+		umnt_and_deltmp
+
 		exit 1
 	fi
 }
@@ -51,7 +63,7 @@ ckerror(){
 permission(){
 	if [ `whoami` != root ]
 	then
-		echo "I need to format, mount, delete and some other root stuff. Be root! Try:"
+		echo "I need to format, mount, delete and some other root stuffs. Be root! Try:"
 		echo "# sudo $0"
 		echo "# su -c \"$0\" "
 		exit 1
@@ -110,21 +122,21 @@ set_options(){
 }
 
 verify_dev (){
-	if [[ `file ${dev}1 | grep block | wc -l` -eq 0 ]]
+	if [[ `file ${dev} | grep block | wc -l` -eq 0 ]]
 	then
-		echo "ERROR: ${dev}1 is not a block device"
+		echo "ERROR: ${dev} is not a block device"
 		echo "exiting"
 		exit 1
 	fi
 }
 
 formatting (){
-	echo "I'm going to formatting ${dev}1, this will destroy all content. "
+	echo "I'm going to format ${dev}, this will destroy all content. "
 	echo -n "Type yes is you want to format, else ^C : "
 
 	read verify
 	# yes to uppercase/lowercase
-	while [ `echo "$verify" |sed 's/.*/\U&/'|  sed 's/^ *//g' | sed 's/ *$//g' ` != "YES" ]
+	while [ `echo "x$verify" |sed 's/.*/\U&/'|  sed 's/^ *//g' | sed 's/ *$//g' ` != "XYES" ]
 	do
 		echo -n "Type yes is you want to format, else ^C : "
 		read verify			
@@ -132,20 +144,27 @@ formatting (){
 	
 	echo "Ok, I'll continue"
 	echo -n "Formatting ................ " 
-	mkfs.vfat ${dev}1 -n "GTC" > /dev/null
+	mkfs.vfat ${dev} -n "GTC" > /dev/null
 	echo "done"
 	
 	ckerror "formatting"
 	
+        ## mounting is here!
+	mount ${dev} $tmp/
+        ## FIXME: Check if mount succeeded
+	ckerror "mount ${dev}"
 
-	
+	## Creating temp dir into partition
+	## To avoid disk full (if you are low in mem)
+        mkdir -p $tmp/dwnld	
  
 }
 
 downloadiso(){
 	if [[ !(-f "$iso") ]]
 	then	
-		wget $isolocation -O $tmp/$isoname
+		echo "Downloading ..."
+		wget $isolocation -O $tmp/dwnld/$isoname
 		# da salvare in file temporaneo, poi se ok [sha1 sum] copiare
 		ckerror "download iso"
 		iso=$tmp/$isoname
@@ -155,15 +174,15 @@ downloadiso(){
 downloadconf(){
 	if [[ !(-f "$conf") ]]
 	then
-		wget $conflocation -O $tmp/$confname
+		wget $conflocation -O $tmp/dwnld/$confname
 		ckerror "download config"
 		conf=$tmp/$confname
 	fi
 }
 
 ckiso(){
-	sha1iso=`sha1sum $iso| cut -f 1 -d " "`
-	sha1conf=`cat $conf | grep sha1 | cut -f2 -d "=" |  sed 's/^ *//g' | sed 's/ *$//g'`
+	sha1iso=`sha1sum $tmp/dwnld/$isoname| cut -f 1 -d " "`
+	sha1conf=`cat $tmp/dwnld/$confname | grep sha1 | cut -f2 -d "=" |  sed 's/^ *//g' | sed 's/ *$//g'`
 	if [[ $sha1iso != $sha1conf ]]
 	then
 		echo "$sha1iso $sha1conf"
@@ -174,25 +193,29 @@ ckiso(){
 
 mnt_and_cpy()
 {
-	mkdir $tmp/destination
-	mount ${dev}1 $tmp/destination
-	ckerror "mount ${dev}1"
+
+	# Get the RAW device for MBR installation
+        raw_dev=$(echo -n ${dev}|tr -d "[:digit:]")
 
 	echo -n "Copying stuff ............. "
-	cp $iso $tmp/destination/$isoname
+	## FIXME: check if file exists
+	cp $tmp/dwnld/$isoname $tmp/$isoname
 	ckerror "iso copy"
-	cp $conf  $tmp/destination/gtc.release
+
+	## FIXME: check if file exists
+	cp $tmp/dwnld/$confname $tmp/$confname
 	ckerror "configuration file copy"
 	echo "done"
 
 	echo -n "Grub install .............. "
-	grub${grubv}-install $dev --boot-directory=$tmp/destination/boot --force --no-floppy 2> /dev/null
+	grub${grubv}-install $raw_dev --boot-directory=$tmp/boot --force --no-floppy 2> /dev/null
 	ckerror "grub install"
 
 	# sorry for bad indentation. 
-	cat > $tmp/destination/boot/grub${grubv}/grub.cfg <<EOCAT
+	# FIXME: need to understand which partition and update hd0,1 instead
+	cat > $tmp/boot/grub${grubv}/grub.cfg <<EOCAT
 set timeout=3
-menuentry "Gippa Thin Client" {
+menuentry "GTC Thin Client" {
 insmod fat
 loopback loop (hd0,1)/$isoname
 linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/$isoname quiet splash --
@@ -200,7 +223,11 @@ initrd (loop)/casper/initrd.lz
 }
 EOCAT
 
-	
+	echo "done"
+
+	## Removing temp stuffs
+        echo -n  "Removing temp files.......... "
+        rm -rf $tmp/dwnld
 	echo "done"
 }
 
@@ -208,8 +235,8 @@ umnt_and_deltmp()
 {
 	echo -n "Umount destination ........ "
 	sync
-	umount ${dev}1
-	ckerror "umount ${dev}1"
+	umount ${dev}
+	ckerror "umount ${dev}"
 	echo "done"
 	
 	rm -rf $tmp
@@ -217,6 +244,7 @@ umnt_and_deltmp()
 }
 
 
+## Main is here
 
 permission
 set_options "$@"
