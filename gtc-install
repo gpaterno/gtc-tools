@@ -1,4 +1,4 @@
-#!/usr/bin/bash 
+#!/usr/bin/env bash
 #
 # GTC Installer
 # (c) 2012 Alessandro "alorenzi" Lorenzi (alorenzi@garl.ch)
