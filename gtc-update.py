@@ -462,15 +462,14 @@ if __name__ == "__main__":
 	import sys
 	import os
 	import subprocess
-	
+	import optparse
+
 	## Setup logging first
 	logfmt = " %(levelname)s: %(message)s"
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
 	logger = logging.getLogger("gtc-updater")
 
 	if os.getuid():
-
-		print "not root"
 		sudocmd = "/usr/bin/sudo"
 		if not os.path.exists(sudocmd):
 			logger.error("Cannot find sudo cmd")
@@ -483,6 +482,10 @@ if __name__ == "__main__":
 		if retcode:
 			print("something wrong happened")
 	else:
-		print " now root" 
-		# TODO da aggiungere controllo cmdline o qtinterface 
-		qtinterface()
+		parser = optparse.OptionParser()
+		parser.add_option("-c", nargs=0)
+		(options, args) = parser.parse_args()
+		if options.c == None:		
+			qtinterface()
+		else:
+			cmdline()
