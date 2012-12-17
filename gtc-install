@@ -39,8 +39,7 @@ fi
 isoname="gtc.iso"
 confname="gtc.release"
 host="gtc.garl.ch"
-#isolocation="http://${host}/iso/$isoname"
-isolocation="http://172.16.212.1/~gpaterno/$isoname"
+isolocation="http://${host}/iso/$isoname"
 conflocation="http://${host}/conf/$confname"
 
 helper(){
