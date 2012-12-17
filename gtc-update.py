@@ -46,8 +46,8 @@ import ConfigParser
 
 
 def getconf():
-	# legge i parametri dal file di configurazione, prima dal file locale,
-	# poi dal file in etc
+	# Take configuration from conf file
+	# ./global.ini first, then /etc/gtc/global.ini
 
 	conffiles  = ['/etc/gtc/global.ini', os.getcwd() + '/global.ini']
 	conf_found = 0
@@ -74,7 +74,7 @@ def getconf():
 
 
 
-	# per ogni parametro prevedo un default.
+	# Take the conf from the file or choose a default
 
 
 	if (conf.has_option("gtc","releasename") ):
@@ -92,10 +92,8 @@ def getconf():
 		     
 	if (conf.has_option("gtc","remoteiso") ):
 		remoteiso = "%s/%s" % (conf.get("gtc","remoteiso"), isoname)
-		logger.debug("Remote iso set to %s" % remoteiso)
 	else:
 		remoteiso="http://gtc.garl.ch/iso/%s" %  isoname
-		logger.debug("Loading default ISO location %s" % remoteiso)
 
 		     
 	if (conf.has_option("gtc","remoterelease") ):
@@ -113,8 +111,7 @@ def getconf():
 
 
 def cleanup():
-	# rimuove le directory temporanee,
-	# da utilizzare prima di uscire dal programma
+	# delete tmp dir, ¡¡¡ use before exit !!!
 	for filename in glob.glob("%s/tmp/update*" % mountlocation):
 		shutil.rmtree(filename)
 		
@@ -122,26 +119,24 @@ def cleanup():
 
 
 def ckroot():
-	# check root, controllo che il tool stia girando
-	# in modalita' superuser.
+	# Verify if root
 
 	from getpass import getuser
 	if (getuser()!="root"):
 		logger.error("You are not root!")
 		logger.error("Try su or sudo")
 		return 0
-	logger.debug("You are root. Yuppi!")
+	# Try to perform a sudo? 
 	return 1
 
 def dl_progress(download_t, download_d, upload_t, upload_d):
-	# funzione di comodo per pycurl
+	# Function for pycurl
 	if float(download_t) != 0:
 	    percentage = float(download_d)*100/float(download_t)
 	    print "Downloading: %s%% \r" % int(percentage),
 
 def download_config():
-	# Download del file di release dal server.
-	# download config
+	# download release file
 	try:
 		logger.debug("Attempting to download conf " )
 		conf = open("%s/%s"%(tmpdir, releasename), "wb")
@@ -163,13 +158,8 @@ def download_config():
 
 
 def mount_device():
-	# controllo se il dispositivo "GTC" e' gia montato
-	# altrimenti lo monto.
-	#if os.path.ismount(mountlocation):
-	#	return 
-	
-	## Check if it's not already mounted, maybe not finished
-	## right
+	# verify if device is mounted
+	# else, mount
 	allmounts = open("/proc/mounts").readlines()
 	for mount in allmounts:
 		if re.search(mountlocation, mount, re.IGNORECASE):
@@ -184,16 +174,18 @@ def mount_device():
 	return 1
 
 def umount_device():
+	## Try to umount device
 	## We do not check the return value, just fails silenty
 	subprocess.call(['umount', mountlocation])
 	return 1
 
 
 def create_tmpdir():
-	# creazione della directory temporanea
+	# Creating tmp dir
 	# /mnt/tmp/update*
 
 	global tmpdir
+	# Verify exist the mount location
 	if os.path.exists("%s/tmp"%mountlocation) ==False:
 		try:
 			os.mkdir("%s/tmp"%mountlocation)
@@ -210,9 +202,10 @@ def create_tmpdir():
 	return 1
 
 def ckrelease():
-	# confronto tra la versione sul server e versione installata
-	# ritorna 0 in caso di errore
-	#		 1 in caso di release aggiornata
+	# control if local release is old
+	# return value  0 error
+	#               1 installed current release
+	#               2 installed an old release
 	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
 
 	try:
@@ -228,19 +221,18 @@ def ckrelease():
 			local_releasedate = 0
 
 		if (conf.getint("gtc","release")<=local_releasedate):
-			logger.error("You are running an up-to-date verson!")
-			logger.error("Be happy!")
+			logger.error("You are running an up-to-date verson")
 			return (1)
 			
 	except:
 		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
 		return (0)
 	
-	logger.debug("Your release is old. Go on.")
+	logger.debug("Your release is old.")
 	return (2)
 
 def downloadiso():
-	# download ISO dal server
+	# download ISO from server
 	try:
 		logger.debug("Attempting to download ISO from %s" % remoteiso )
 		iso = open("%s/%s"%(tmpdir, isoname), "wb")
@@ -264,7 +256,7 @@ def downloadiso():
 
 		
 def cksumiso():
-	# controllo tramite sha1 dell'iso che il file non sia corrotto
+	# check iso sha1 hash
 	try: 
 		logger.debug("Check sha1 iso")
 		isohash = hashlib.sha1(open("%s/%s"%(tmpdir, isoname), "rb").read()).hexdigest()
@@ -298,7 +290,7 @@ def cksumiso():
 	logger.debug("ckiso OK")
 	
 def replace_iso():
-	# sovrascrivo l'iso con la nuova versione.
+	# Replace iso with new version.
 	logger.debug("Replacing existing installation")
 	
 	try:	
@@ -323,10 +315,7 @@ def replace_iso():
 	logger.debug("Replaced.")
 
 
-## Setup logging first
-logfmt = " %(levelname)s: %(message)s"
-logging.basicConfig(format=logfmt, level=logging.DEBUG)
-logger = logging.getLogger("gtc-updater")
+
 
 
 def cmdline():
@@ -373,56 +362,56 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 		self.connect(appexit,QtCore.SIGNAL('triggered()'),self.prgexit)
 		self.show()
 
-	def inizializza(self):
+	# all the ckecks needed for start GTC Update
+	def initail_ck(self):
 		rval = getconf()
 		if rval != 1:
-			self.showMessage("Ooops!", "Impossibile trovare il file di configurazione\n Controlla l'esistenza di global.ini nella directory /etc/gtc/ ")
+			self.showMessage("Ooops!", "Cannot find conf file\n check  /etc/gtc/global.ini ")
 			sleep(2)
 			return(False)
 
 		rval = ckroot()
 		if rval == 0:
-			self.showMessage("Ooops!", "Devi essere amministratore per eseguire l'aggiornamento del GTC")
+			self.showMessage("Ooops!", "You must be admin to exec GTC Updater")
 			sleep(2)
 			return(False)
 
 		rval = 	mount_device()
 		if rval == 0:
-			self.showMessage("Ooops!", "Errore durante il mount del device")
+			self.showMessage("Ooops!", "Error mounting device")
 			sleep(2)
 			return(False)
 					
 		rval = create_tmpdir()
 		if rval == 0:
-			self.showMessage("Ooops!", "Errore nella creazione della directory temporanea")
+			self.showMessage("Ooops!", "Error creating temp dir")
 			sleep(2)
 			return(False)
 
 
-	# Controllo dell'aggiornamento.
-	# Visualizza un messaggio in caso di aggiornamento disponibile
-	# Per il controllo automatico eseguire con parametro manual=False
+	# ckupdate, show baloon in case of update available
+	# for auto check exec with  manual=False
 	def ckupdates(self, manual=True):
-		if self.inizializza() == False:
+		if self.initail_ck() == False:
 			return(0)
 			
 		rval = download_config()
 		if rval == 0:
-			self.showMessage("Ooops!", "Errore nella creazione della directory temporanea")
+			self.showMessage("Ooops!", "Error creating temp dir")
 			return(0)
 
 		rval = ckrelease()
 		if rval == 0:
-			self.showMessage("Ooops!", "Errore di aggiornamento")
+			self.showMessage("Ooops!", "Error Updating")
 			return (0)
 		elif rval == 1 and manual==True:
-			self.showMessage("GTC Updater", "La release e' aggiornata")
+			self.showMessage("GTC Updater", "Your release is updated")
 			return(0)
 		elif rval == 2:
-			self.showMessage("GTC Updater", "Devi aggiornare!")
-			# abilitare il tasto di avvio aggiornamento.
+			self.showMessage("GTC Updater", "You have to update")
+			# enable update.
 
-	# Funzione per eseguire l'update
+	# Exec to update
 	def update(self):
 		self.showMessage("GTC Updater","Not implemented yet")
 
@@ -436,12 +425,6 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 def qtinterface():
 	import logging
 
-	## Setup logging first
-	logfmt = " %(levelname)s: %(message)s"
-	logging.basicConfig(format=logfmt, level=logging.DEBUG)
-	global logger
-	logger = logging.getLogger("gtc-updater")
-
 	app = QtGui.QApplication(sys.argv)
 	trayIcon = SystemTrayIcon()
 	trayIcon.show()
@@ -450,5 +433,9 @@ def qtinterface():
 
 
 if __name__ == "__main__":
+	## Setup logging first
+	logfmt = " %(levelname)s: %(message)s"
+	logging.basicConfig(format=logfmt, level=logging.DEBUG)
+	logger = logging.getLogger("gtc-updater")
 	# da aggiungere controllo cmdline o qtinterface 
 	qtinterface()
