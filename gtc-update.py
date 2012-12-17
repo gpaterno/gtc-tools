@@ -139,6 +139,13 @@ def dl_progress(download_t, download_d, upload_t, upload_d):
 	    percentage = float(download_d)*100/float(download_t)
 	    print "Downloading: %s%% \r" % int(percentage),
 
+def dl_qt_progress(download_t, download_d, upload_t, upload_d):
+	# Function for pycurl
+	# TODO: all
+	if float(download_t) != 0:
+	    percentage = float(download_d)*100/float(download_t)
+	    print "Downloading: %s%% \r" % int(percentage),
+
 def download_config():
 	# download release file
 	try:
@@ -235,7 +242,7 @@ def ckrelease():
 	logger.debug("Your release is old.")
 	return (2)
 
-def downloadiso():
+def downloadiso(qt=False):
 	# download ISO from server
 	try:
 		logger.debug("Attempting to download ISO from %s" % remoteiso )
@@ -243,7 +250,10 @@ def downloadiso():
 		dwnld = pycurl.Curl()
 		dwnld.setopt(pycurl.URL, remoteiso)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
-		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
+		if qt==True:
+			dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
+		else:
+			dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_qt_progress)
 		dwnld.setopt(pycurl.WRITEDATA, iso)
 		dwnld.perform()
 		print ""		# print empty line
@@ -353,7 +363,7 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 	def __init__(self, parent=None):
 		QtGui.QSystemTrayIcon.__init__(self, parent)
 
-		self.setIcon(QtGui.QIcon("icon.jpg"))
+		self.setIcon(QtGui.QIcon("garl.png"))
 
 		self.iconMenu = QtGui.QMenu(parent)
 		appckupdate = self.iconMenu.addAction("Check Update")
@@ -423,13 +433,8 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 		if self.initail_ck() == False:
 			return(0)
 
-		rval = downloadiso()
-		if rval == 0:
-			# find a way to show download status!
-			self.showMessage("Ooops!", "Error download iso")
-			return(0)
 
-		rval = downloadiso()
+		rval = downloadiso(qt=True)
 		if rval == 0:
 			self.showMessage("Ooops!", "Error download iso")
 			return(0)
