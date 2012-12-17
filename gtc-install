@@ -1,4 +1,4 @@
-#!/usr/bin/bash 
+#!/usr/bin/env bash 
 #
 # GTC Installer
 # (c) 2012 Alessandro "alorenzi" Lorenzi (alorenzi@garl.ch)
@@ -30,8 +30,7 @@ grubv="2"
 
 isoname="gtc.iso"
 confname="gtc.release"
-#host="gtc.garl.ch"
-host=192.168.100.1
+host="gtc.garl.ch"
 isolocation="http://${host}/iso/$isoname"
 conflocation="http://${host}/conf/$confname"
 

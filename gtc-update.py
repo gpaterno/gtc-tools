@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # GTC Updater
 # (c) 2012 Giuseppe "Gippa" Paterno' (gpaterno@gpaterno.com)
