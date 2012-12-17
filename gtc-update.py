@@ -111,10 +111,14 @@ def getconf():
 
 
 def cleanup():
-	# delete tmp dir, ¡¡¡ use before exit !!!
-	for filename in glob.glob("%s/tmp/update*" % mountlocation):
-		shutil.rmtree(filename)
-		
+	# delete tmp dir, !!! use before exit !!!
+	try:
+		for filename in glob.glob("%s/tmp/update*" % mountlocation):
+			shutil.rmtree(filename)
+	except:
+		logger.error("Error cleanup")
+		return(0)
+
 	return(1)
 
 
@@ -353,12 +357,13 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 
 		self.iconMenu = QtGui.QMenu(parent)
 		appckupdate = self.iconMenu.addAction("Check Update")
-		appupdate = self.iconMenu.addAction("Install new version")
+		self.appupdate = self.iconMenu.addAction("Install new version")
+		self.appupdate.setDisabled(True)
 		appexit = self.iconMenu.addAction("Exit")
 		self.setContextMenu(self.iconMenu)
 
 		self.connect(appckupdate,QtCore.SIGNAL('triggered()'),self.ckupdates)
-		self.connect(appupdate,QtCore.SIGNAL('triggered()'),self.update)
+		self.connect(self.appupdate,QtCore.SIGNAL('triggered()'),self.update)
 		self.connect(appexit,QtCore.SIGNAL('triggered()'),self.prgexit)
 		self.show()
 
@@ -409,10 +414,38 @@ class SystemTrayIcon(QtGui.QSystemTrayIcon):
 			return(0)
 		elif rval == 2:
 			self.showMessage("GTC Updater", "You have to update")
+			# enable update
+			self.appupdate.setDisabled(False)
 			# enable update.
 
 	# Exec to update
 	def update(self):
+		if self.initail_ck() == False:
+			return(0)
+
+		rval = downloadiso()
+		if rval == 0:
+			# find a way to show download status!
+			self.showMessage("Ooops!", "Error download iso")
+			return(0)
+
+		rval = downloadiso()
+		if rval == 0:
+			self.showMessage("Ooops!", "Error download iso")
+			return(0)
+				
+	
+		rval = cksumiso()
+		if rval == 0:
+			self.showMessage("Ooops!", "Error calculating cksum. Please retry update")
+			return(0)
+			
+		rval = replace_iso()
+		if rval == 0:
+			self.showMessage("Ooops!", "Error replace iso. Please retry update.")
+			return(0)
+
+				
 		self.showMessage("GTC Updater","Not implemented yet")
 
 	def prgexit(self):
