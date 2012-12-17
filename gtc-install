@@ -43,7 +43,7 @@ helper(){
 ckerror(){
 	if [[ $? -ne 0 ]]
 	then
-		echo "ERROR: $1 fallito"
+		echo "ERROR: $1 failed"
 		exit 1
 	fi
 }
@@ -94,7 +94,7 @@ set_options(){
 	if [ "$tmp" == "" ]
 	then
 		tmp=`mktemp -d`
-		ckerror "creazione directory temporanea"
+		ckerror "creation temp directory"
 		
 	else
 		mkdir -p $tmp
@@ -103,7 +103,7 @@ set_options(){
 		then
 			echo -n ""
 		else
-			echo "ERROR: creazione della directory temporanea"
+			echo "ERROR: creation temp directory failed"
 			return 1
 		fi
 	fi 
@@ -119,8 +119,7 @@ verify_dev (){
 }
 
 formatting (){
-	echo "I'm going to formatting ${dev}1. Well, this will destroy everything"
-	echo "No remorse, no regrets"
+	echo "I'm going to formatting ${dev}1, this will destroy all content. "
 	echo -n "Type yes is you want to format, else ^C : "
 
 	read verify
@@ -132,11 +131,11 @@ formatting (){
 	done
 	
 	echo "Ok, I'll continue"
-	echo -n "Formattazione ............. " 
+	echo -n "Formatting ................ " 
 	mkfs.vfat ${dev}1 -n "GTC" > /dev/null
 	echo "done"
 	
-	ckerror "formattazione"
+	ckerror "formatting"
 	
 
 	
@@ -177,18 +176,18 @@ mnt_and_cpy()
 {
 	mkdir $tmp/destination
 	mount ${dev}1 $tmp/destination
-	ckerror "mountaggio ${dev}1"
+	ckerror "mount ${dev}1"
 
 	echo -n "Copying stuff ............. "
 	cp $iso $tmp/destination/$isoname
-	ckerror "copia iso"
+	ckerror "iso copy"
 	cp $conf  $tmp/destination/gtc.release
-	ckerror "copia configurazione"
+	ckerror "configuration file copy"
 	echo "done"
 
-	echo -n "Grubbizzazione ............ "
+	echo -n "Grub install .............. "
 	grub${grubv}-install $dev --boot-directory=$tmp/destination/boot --force --no-floppy 2> /dev/null
-	ckerror "grubbizzazione"
+	ckerror "grub install"
 
 	# sorry for bad indentation. 
 	cat > $tmp/destination/boot/grub${grubv}/grub.cfg <<EOCAT
@@ -207,14 +206,14 @@ EOCAT
 
 umnt_and_deltmp()
 {
-	echo -n "Smontaggio destinazione ... "
+	echo -n "Umount destination ........ "
 	sync
 	umount ${dev}1
-	ckerror "smontaggio ${dev}1"
+	ckerror "umount ${dev}1"
 	echo "done"
 	
 	rm -rf $tmp
-	ckerror "cancellazione cartella temporanea"
+	ckerror "delete temp dir"
 }
 
 
