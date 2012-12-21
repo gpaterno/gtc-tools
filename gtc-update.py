@@ -34,12 +34,6 @@ import glob
 import shutil
 from ctypes import *
 from time import sleep
-
-from PyQt4 import QtCore
-from PyQt4 import QtGui
-
-
-
 from tempfile import mkdtemp
 import ConfigParser
 	
@@ -59,7 +53,7 @@ def getconf():
 			conf_found = 1
 
 	if conf_found == 0:
-		logger.DEBUG("Unable to find configuration files")
+		logger.debug("Unable to find configuration files")
 		return (0)
 
 	conf = ConfigParser.RawConfigParser()
@@ -319,7 +313,10 @@ def replace_iso():
 		
 	logger.debug("Replaced.")
 
-
+def mklauncher():
+	logger.info("start making launcher")
+	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"~/gtc-update.py -i\" \nIcon=\"\"\nTerminal=true\nType=Application\nStartupNotify=true"
+	
 
 
 
@@ -347,115 +344,50 @@ def cmdline():
 	logger.info("Please reboot ASAP!")
 
 
+def helper():
+	logger.error("TODO")
+	exit(1)
 
+def check_updates():
+	# check if updates are available  
+	## Loading config
+	getconf()
+	## Welcome msg and warning
+	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
-
-class SystemTrayIcon(QtGui.QSystemTrayIcon):
-	def __init__(self, parent=None):
-		QtGui.QSystemTrayIcon.__init__(self, parent)
-
-		self.setIcon(QtGui.QIcon("garl.png"))
-
-		self.iconMenu = QtGui.QMenu(parent)
-		appckupdate = self.iconMenu.addAction("Check Update")
-		self.appupdate = self.iconMenu.addAction("Install new version")
-		self.appupdate.setDisabled(True)
-		appexit = self.iconMenu.addAction("Exit")
-		self.setContextMenu(self.iconMenu)
-
-		self.connect(appckupdate,QtCore.SIGNAL('triggered()'),self.ckupdates)
-		self.connect(self.appupdate,QtCore.SIGNAL('triggered()'),self.update)
-		self.connect(appexit,QtCore.SIGNAL('triggered()'),self.prgexit)
-		self.show()
-
-	# all the ckecks needed for start GTC Update
-	def initail_ck(self):
-		rval = getconf()
-		if rval != 1:
-			self.showMessage("Ooops!", "Cannot find conf file\n check  /etc/gtc/global.ini ")
-			sleep(2)
-			return(False)
-
-		rval = ckroot()
-		if rval == 0:
-			self.showMessage("Ooops!", "You must be admin to exec GTC Updater")
-			sleep(2)
-			return(False)
-
-		rval = 	mount_device()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error mounting device")
-			sleep(2)
-			return(False)
-					
-		rval = create_tmpdir()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error creating temp dir")
-			sleep(2)
-			return(False)
-
-
-	# ckupdate, show baloon in case of update available
-	# for auto check exec with  manual=False
-	def ckupdates(self, manual=True):
-		if self.initail_ck() == False:
-			return(0)
-			
-		rval = download_config()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error creating temp dir")
-			return(0)
-
-		rval = ckrelease()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error Updating")
-			return (0)
-		elif rval == 1 and manual==True:
-			self.showMessage("GTC Updater", "Your release is updated")
-			return(0)
-		elif rval == 2:
-			self.showMessage("GTC Updater", "You have to update")
-			# enable update
-			self.appupdate.setDisabled(False)
-			# enable update.
-
-	# Exec to update
-	def update(self):
-
-		rval = downloadiso(qt=True)
-		if rval == 0:
-			self.showMessage("Ooops!", "Error download iso")
-			return(0)
-				
 	
-		rval = cksumiso()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error calculating cksum. Please retry update")
-			return(0)
+	if ckroot() == 0:
+		exit (0)
+	create_tmpdir()
+	download_config()
+	ckrelease()
+	mklauncher()
+	cleanup()	
+	
+	logger.info("All done.")
+	
+
+def install_updates():
+	logger.error("TODO")
+	if os.getuid():
+		sudocmd = "/usr/bin/sudo"
+		if not os.path.exists(sudocmd):
+			logger.error("Cannot find sudo cmd")
+			exit(1)		
 			
-		rval = replace_iso()
-		if rval == 0:
-			self.showMessage("Ooops!", "Error replace iso. Please retry update.")
-			return(0)
-
-				
-		self.showMessage("GTC Updater","Not implemented yet")
-
-	def prgexit(self):
-		cleanup()
+		command = "{} {}".format(sudocmd, " ".join(sys.argv))
+		command = command.split()
+		retcode = subprocess.call(command)
+		if retcode:
+			print("something wrong happened")
+			exit(1)
 		exit(0)
 
+	logger.error("TODO")
 
+	
+	exit(0)
 
-
-def qtinterface():
-	import logging
-
-	app = QtGui.QApplication(sys.argv)
-	trayIcon = SystemTrayIcon()
-	trayIcon.show()
-	app.exec_()
-	sys.exit(0)
 
 
 if __name__ == "__main__":
@@ -467,25 +399,17 @@ if __name__ == "__main__":
 	## Setup logging first
 	logfmt = " %(levelname)s: %(message)s"
 	logging.basicConfig(format=logfmt, level=logging.DEBUG)
+	global logger
 	logger = logging.getLogger("gtc-updater")
 
-	if os.getuid():
-		sudocmd = "/usr/bin/sudo"
-		if not os.path.exists(sudocmd):
-			logger.error("Cannot find sudo cmd")
-			exit(1)
-			
-			
-		command = "{} {}".format(sudocmd, " ".join(sys.argv))
-		command = command.split()
-		retcode = subprocess.call(command)
-		if retcode:
-			print("something wrong happened")
-	else:
+
+
 		parser = optparse.OptionParser()
 		parser.add_option("-c", nargs=0)
 		(options, args) = parser.parse_args()
 		if options.c == None:		
-			qtinterface()
+			check_updates()
+		elif options.i == None:
+			install_updates()
 		else:
-			cmdline()
+			helper()
