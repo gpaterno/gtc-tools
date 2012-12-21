@@ -233,14 +233,14 @@ def ckrelease():
 
 		if (conf.getint("gtc","release")<=local_releasedate):
 			logger.error("You are running an up-to-date verson")
-			return (1)
+			return (2)
 			
 	except:
 		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
-		return (0)
+		return (False)
 	
 	print("Your release is old.")
-	return (2)
+	return (True)
 
 def downloadiso(qt=False):
 	# download ISO from server
@@ -261,9 +261,10 @@ def downloadiso(qt=False):
 		iso.close()
 	except pycurl.error, e:
 		logger.error("Download failed: %s" % e[1])
-
+		return False
 	finally:
 		logger.debug("Download completed")
+	return True
 
 
 		
@@ -316,6 +317,7 @@ def mklauncher():
 	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"/home/ubuntu/gtc-update.py -i\" \nIcon=\"/home/ubuntu/garl.png\"\nTerminal=true\nType=Application\nStartupNotify=true"
 	try:
 		desktop_file=open("/home/ubuntu/.gtc-update.desktop","w")
+		print "/home/ubuntu/.gtc-update.desktop"
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
@@ -338,7 +340,7 @@ def cmdline():
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
 	
-	if ckroot() == 0:
+	if ckroot() == False:
 		exit (0)
 	mount_device()
 	create_tmpdir()
@@ -363,20 +365,24 @@ def check_updates():
 	print "halo"
 	# check if updates are available  
 	## Loading config
-	getconf()
 	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
+	if getconf()==False:
+		exit(1)
+
 	
-	#if ckroot() == 0:
-	#	exit (0)
 	if create_tmpdir(base="/tmp")==False:
 		exit(1)
 	if download_config()==False:
 		exit(1)
-		
-	if ckrelease()==False:
+
+	rcode =ckrelease()
+	if rcode==False:
 		exit(1)
+	elif rcode==2:
+		exit(0)
+	
 		
 	if mklauncher()==False:
 		exit(1)
@@ -388,7 +394,10 @@ def check_updates():
 	exit(0)
 
 def install_updates():
-
+	# function to (re)check if updates are available and install
+	#  
+	# TODO: Add progress bar
+	# https://wiki.ubuntu.com/Unity/LauncherAPI#Progress
 
 	if os.getuid():
 		sudocmd = "/usr/bin/sudo"
@@ -403,6 +412,34 @@ def install_updates():
 			print("something wrong happened")
 			exit(1)
 		exit(0)
+
+	if getconf()==False:
+		exit(1)
+
+	
+	if create_tmpdir()==False:
+		exit(1)
+		
+	if download_config()==False:
+		exit(1)
+		
+	if ckrelease()==False:
+		exit(1)
+		
+	if downloadiso()==False:
+		exit(1)
+
+	if cksumiso()==False:
+		exit(1)
+	
+	if replace_iso()==False:
+		exit(1)
+			
+	if cleanup()==False:
+		exit(1)
+	
+	logger.info("All done.")
+	exit(0)
 	
 	exit(0)
 
