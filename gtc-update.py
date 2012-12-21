@@ -187,24 +187,28 @@ def umount_device():
 	return 1
 
 
-def create_tmpdir():
+def create_tmpdir(base=None):
 	# Creating tmp dir
 	# /mnt/tmp/update*
+	# base is path where create tmp directory
 
 	global tmpdir
 	# Verify exist the mount location
-	if os.path.exists("%s/tmp"%mountlocation) ==False:
+	if base==None:
+		base="%s/tmp"%mountlocation
+		
+	if os.path.exists(base) ==False:
 		try:
-			os.mkdir("%s/tmp"%mountlocation)
+			os.mkdir(base)
 		except:
 			logger.error("Error creating temp dir" )
 			return 0
 	
 	try:
-		tmpdir = mkdtemp(prefix='update', dir="%s/tmp" %mountlocation)
+		tmpdir = mkdtemp(prefix='update', dir=base)
 	except:
 		logger.error("Unable to create temp dir" )
-		return 0
+		return False
 	logger.debug("tmpdir = %s" %tmpdir)
 	return 1
 
@@ -235,7 +239,7 @@ def ckrelease():
 		logger.error("Unable to process config %s/%s" % (tmpdir, releasename))
 		return (0)
 	
-	logger.debug("Your release is old.")
+	print("Your release is old.")
 	return (2)
 
 def downloadiso(qt=False):
@@ -295,29 +299,36 @@ def replace_iso():
 	try:	
 		if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
 			logger.error("Unable to replace the conf file")
-			cleanup()
-			umount_device()
-			exit(1)
+			return (False)
 		
 		if subprocess.call(['mv', "%s/%s"%(tmpdir, releasename), localrelease ]) != 0:
 			logger.error("Unable to replace the conf file")
-			cleanup()
-			umount_device()
-			exit(1)
+			return False
 	except:
 		logger.error("Error moving file ")
-		cleanup()
-		umount_device()
-		exit(1)
+		return False
 
 		
 	logger.debug("Replaced.")
 
 def mklauncher():
 	logger.info("start making launcher")
-	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"~/gtc-update.py -i\" \nIcon=\"\"\nTerminal=true\nType=Application\nStartupNotify=true"
-	
+	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"/home/ubuntu/gtc-update.py -i\" \nIcon=\"/home/ubuntu/garl.png\"\nTerminal=true\nType=Application\nStartupNotify=true"
+	try:
+		desktop_file=open("/home/ubuntu/.gtc-update.desktop","w")
+		desktop_file.write(desktop_content)
+		desktop_file.close()
+	except:
+		logger.error("ERROR while writing .desktop file")
+		return False
 
+	try:
+		#subprocess.call(['gsettings', "get" , "com.canonical.Unity.Launcher", "favorites"])
+		subprocess.call(['gsettings', "set" , "com.canonical.Unity.Launcher", "favorites", "['/home/ubuntu/.gtc-update.desktop']"])
+	except:
+		logger.error("ERROR while creating launcher")
+		return False
+	return True
 
 
 def cmdline():
@@ -345,10 +356,11 @@ def cmdline():
 
 
 def helper():
-	logger.error("TODO")
+	logger.error("TODO helper")
 	exit(1)
 
 def check_updates():
+	print "halo"
 	# check if updates are available  
 	## Loading config
 	getconf()
@@ -356,19 +368,28 @@ def check_updates():
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
 	
-	if ckroot() == 0:
-		exit (0)
-	create_tmpdir()
-	download_config()
-	ckrelease()
-	mklauncher()
-	cleanup()	
+	#if ckroot() == 0:
+	#	exit (0)
+	if create_tmpdir(base="/tmp")==False:
+		exit(1)
+	if download_config()==False:
+		exit(1)
+		
+	if ckrelease()==False:
+		exit(1)
+		
+	if mklauncher()==False:
+		exit(1)
+			
+	if cleanup()==False:
+		exit(1)
 	
 	logger.info("All done.")
-	
+	exit(0)
 
 def install_updates():
-	logger.error("TODO")
+
+
 	if os.getuid():
 		sudocmd = "/usr/bin/sudo"
 		if not os.path.exists(sudocmd):
@@ -382,9 +403,6 @@ def install_updates():
 			print("something wrong happened")
 			exit(1)
 		exit(0)
-
-	logger.error("TODO")
-
 	
 	exit(0)
 
@@ -402,14 +420,15 @@ if __name__ == "__main__":
 	global logger
 	logger = logging.getLogger("gtc-updater")
 
+	## parsing opts
+	parser = optparse.OptionParser()
+	parser.add_option("-c", nargs=0)
+	parser.add_option("-i", nargs=0)
+	(options, args) = parser.parse_args()
 
-
-		parser = optparse.OptionParser()
-		parser.add_option("-c", nargs=0)
-		(options, args) = parser.parse_args()
-		if options.c == None:		
-			check_updates()
-		elif options.i == None:
-			install_updates()
-		else:
-			helper()
+	if options.c != None:
+		check_updates()
+	elif options.i != None:
+		install_updates()
+	else:
+		helper()
