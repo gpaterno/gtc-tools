@@ -43,8 +43,8 @@ isolocation="http://${host}/iso/$isoname"
 conflocation="http://${host}/conf/$confname"
 
 helper(){
-	echo "Usage: $0 -d device [-t tempdir] [-i iso]"
-	echo "$ sudo ./gtc-install -d /dev/sdb -i /home/alorenzi/gtc.iso -t ./tmp"
+	echo "Usage: $0 -d device [-t tempdir] [-i iso] [-c conffile]"
+	echo "$ sudo ./gtc-install -d /dev/sdb1 -i ~/gippa.iso -c ~/gtc.conf -t ./tmp/ "
 	exit 1
 }
 
@@ -226,7 +226,7 @@ EOCAT
 	echo "done"
 
 	## Removing temp stuffs
-        echo -n  "Removing temp files.......... "
+        echo -n  "Removing temp files........ "
         rm -rf $tmp/dwnld
 	echo "done"
 }
