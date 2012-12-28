@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 def setup_wireless(wireless):
+	import os
+	import uuid
 	
 	try:
 		essid=wireless.get("essid")
@@ -19,13 +21,21 @@ def setup_wireless(wireless):
 	
 
 	try:
-		fh = open("/etc/NetworkManager/system-connections/%s" % essid, "w")
+		filename="/etc/NetworkManager/system-connections/%s" % essid
+		fh = open(filename, "w")
 		fh.write("[connection]\n")
-		fh.write("id=\"%s (GTC)\"\n"%essid)
-		fh.write("ssid=\"%s\"\n" %essid)
-		fh.write("key-mamt=wpa-psk\n") 
+		fh.write("id=%s (GTC)\n"%essid)
+		fh.write("uuid=%s\n" % uuid.uuid1())
+		fh.write("type=802-11-wireless\n\n")
+		fh.write("[802-11-wireless]\n")
+		fh.write("mode=infrastructure\n")
+		fh.write("ssid=%s\n" %essid)
+		fh.write("security=802-11-wireless-security\n\n")
+		fh.write("[802-11-wireless-security]\n")
+		fh.write("key-mgmt=wpa-psk\n") 
 		fh.write("psk=%s\n" %psk)
 		fh.close()
+		os.chmod(filename,0600)
 	except:
 		logger.error("Error writing wireless confinguration")
 		return False
