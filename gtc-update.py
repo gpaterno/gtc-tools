@@ -64,7 +64,7 @@ def getconf():
 	if (conf.has_option("gtc","mountlocation") ):
 		mountlocation = conf.get("gtc","mountlocation")
 	else:
-		mountlocation = "/mnt"
+		mountlocation = "/isodevice"
 
 
 
