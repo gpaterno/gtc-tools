@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+##
+## GTC Configuration tool
+## This automatically configures wireless and desktop links
+##
+import os
+import uuid
+ 
+
 def setup_wireless(wireless):
-	import os
-	import uuid
 	
 	try:
 		essid=wireless.get("essid")
@@ -58,7 +64,22 @@ if __name__ == "__main__":
 	global logger
 	logger = logging.getLogger("gtc-updater")
 
-	conf = "./gtc.conf"
+	conf = ""
+	conffiles  = ['/isodevice/gtc.conf', os.getcwd() + '/gtc.conf']
+	conf_found = 0
+
+	## Get Config File
+	for tconf in conffiles:
+		if os.path.isfile(tconf):
+			conf   = tconf
+			conf_found = 1
+
+	if conf_found == 0:
+		logger.debug("Unable to find configuration files")
+		exit (0)
+
+
+	
 	try:
 		conf = json.load(open(conf))
 	except:
