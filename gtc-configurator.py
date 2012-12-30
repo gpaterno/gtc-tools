@@ -65,7 +65,7 @@ if __name__ == "__main__":
 	logger = logging.getLogger("gtc-updater")
 
 	conf = ""
-	conffiles  = ['/isodevice/gtc.conf', os.getcwd() + '/gtc.conf']
+	conffiles  = ['/isodevice/gtc/gtc.conf', os.getcwd() + '/gtc.conf']
 	conf_found = 0
 
 	## Get Config File
