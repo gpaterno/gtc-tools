@@ -59,12 +59,12 @@ def getconf():
 	conf = ConfigParser.RawConfigParser()
 	conf.read( myconfig )
 
-	global localrelease, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
+	global localrelease, localiso, remoteiso, remoterelease, releasename, isoname, disklbl, tmpdir, mountlocation
 
 	if (conf.has_option("gtc","mountlocation") ):
 		mountlocation = conf.get("gtc","mountlocation")
 	else:
-		mountlocation = "/isodevice"
+		mountlocation = "/isodevice/"
 
 
 
@@ -75,13 +75,14 @@ def getconf():
 		releasename = conf.get("gtc","releasename")
 	else:
 		releasename = "gtc.release"
-	localrelease="/%s/%s" % (mountlocation, releasename)
+
+	localrelease="/%s/gtc/%s" % (mountlocation, releasename)
 
 	if (conf.has_option("gtc","isoname") ):
 		isoname = conf.get("gtc","isoname")
 	else:
 		isoname = "gtc.iso"
-
+	localiso = "%s/gtc/%s"% (mountlocation,isoname)
 		     
 		     
 	if (conf.has_option("gtc","remoteiso") ):
@@ -164,32 +165,9 @@ def download_config():
 		
 
 
-def mount_device():
-	# verify if device is mounted
-	# else, mount
-	allmounts = open("/proc/mounts").readlines()
-	for mount in allmounts:
-		if re.search(mountlocation, mount, re.IGNORECASE):
-			device = mount.split(" ")[0]
-			logger.warning("%s already mounted on %s, skip" % (mountlocation, device))
-			return 1
-
-	## Execute mount
-	if subprocess.call(['mount', "-L" , disklbl, mountlocation]) != 0:
-		logger.error("Unable to mount the ISO image")
-		return 0
-	return 1
-
-def umount_device():
-	## Try to umount device
-	## We do not check the return value, just fails silenty
-	subprocess.call(['umount', mountlocation])
-	return 1
-
-
 def create_tmpdir(base=None):
 	# Creating tmp dir
-	# /mnt/tmp/update*
+	# /isodevice/tmp/update*
 	# base is path where create tmp directory
 
 	global tmpdir
@@ -298,7 +276,7 @@ def replace_iso():
 	logger.debug("Replacing existing installation")
 	
 	try:	
-		if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  "%s/%s"% (mountlocation,isoname)]) != 0:
+		if subprocess.call(['mv', "%s/%s"%(tmpdir, isoname),  localiso]) != 0:
 			logger.error("Unable to replace the conf file")
 			return (False)
 		
@@ -343,7 +321,6 @@ def cmdline():
 	
 	if ckroot() == False:
 		exit (0)
-	mount_device()
 	create_tmpdir()
 	download_config()
 	ckrelease()
@@ -352,7 +329,6 @@ def cmdline():
 	replace_iso()
 	
 	cleanup()	
-	umount_device()
 	
 	logger.info("All done.")
 	logger.info("Please reboot ASAP!")

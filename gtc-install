@@ -195,15 +195,18 @@ mnt_and_cpy()
 {
 
 	# Get the RAW device for MBR installation
-        raw_dev=$(echo -n ${dev}|tr -d "[:digit:]")
+	raw_dev=$(echo -n ${dev}|tr -d "[:digit:]")
 
 	echo -n "Copying stuff ............. "
-	## FIXME: check if file exists
-	cp $iso $tmp/$isoname
+
+	mkdir $tmp/gtc/
+	ckerror "making dir"
+
+
+	cp $iso $tmp/gtc/$isoname
 	ckerror "iso copy"
 
-	## FIXME: check if file exists
-	cp $conf $tmp/$confname
+	cp $conf $tmp/gtc/$confname
 	ckerror "configuration file copy"
 	echo "done"
 
@@ -217,8 +220,8 @@ mnt_and_cpy()
 set timeout=3
 menuentry "GTC Thin Client" {
 insmod fat
-loopback loop (hd0,1)/$isoname
-linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/$isoname quiet splash --
+loopback loop (hd0,1)/gtc/$isoname
+linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=/gtc/$isoname quiet splash --
 initrd (loop)/casper/initrd.lz
 }
 EOCAT
