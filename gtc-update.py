@@ -292,10 +292,9 @@ def replace_iso():
 
 def mklauncher():
 	logger.info("start making launcher")
-	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"/home/ubuntu/gtc-update.py -i\" \nIcon=\"/home/ubuntu/garl.png\"\nTerminal=true\nType=Application\nStartupNotify=true"
+	desktop_content = "[Desktop Entry] \nName=\"Update the system\" \nComment= \nExec=\"/usr/sbin/gtc-update -i\" \nIcon=\"/usr/share/gtc/garl_little.png\"\nTerminal=true\nType=Application\nStartupNotify=true"
 	try:
 		desktop_file=open("/home/ubuntu/.gtc-update.desktop","w")
-		print "/home/ubuntu/.gtc-update.desktop"
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
@@ -303,6 +302,7 @@ def mklauncher():
 		return False
 
 	try:
+		# TODO!!!!
 		#subprocess.call(['gsettings', "get" , "com.canonical.Unity.Launcher", "favorites"])
 		
 		subprocess.call(['gsettings', "set" , "com.canonical.Unity.Launcher", "favorites", "['/home/ubuntu/.gtc-update.desktop']"])
