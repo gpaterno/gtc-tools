@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+##
+## GTC Configuration tool
+## This automatically configures wireless and desktop links
+##
+import os
+import uuid
+ 
+
 def setup_wireless(wireless):
-	import os
-	import uuid
 	
 	try:
 		essid=wireless.get("essid")
@@ -64,7 +70,7 @@ if __name__ == "__main__":
 
 	## Get Config File
 	for tconf in conffiles:
-		if os.path.isfile(conf):
+		if os.path.isfile(tconf):
 			conf   = tconf
 			conf_found = 1
 

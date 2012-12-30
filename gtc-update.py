@@ -326,6 +326,7 @@ def mklauncher():
 
 	try:
 		#subprocess.call(['gsettings', "get" , "com.canonical.Unity.Launcher", "favorites"])
+		
 		subprocess.call(['gsettings', "set" , "com.canonical.Unity.Launcher", "favorites", "['/home/ubuntu/.gtc-update.desktop']"])
 	except:
 		logger.error("ERROR while creating launcher")
