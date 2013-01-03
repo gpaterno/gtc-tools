@@ -24,4 +24,7 @@ cp app/*.png debianpkg/usr/share/pixmaps
 
 cp gtc.gschema.override /usr/share/glib-2.0/schemas/
 
+cp vmware/vmware-view-client.license-accepted /etc/skel/.vmware-view-client.license-accepted
+cp vmware/view-preferences /etc/skel/.vmware/view-preferences
+
 dpkg -b debianpkg gtc-tools.deb
