@@ -19,6 +19,8 @@ cp gtc-install debianpkg/usr/sbin/gtc-install
 chmod +x debianpkg/usr/sbin/*
 
 cp global.ini debianpkg/etc/gtc
+cp gtc.conf debianpkg/etc/gtc
+cp gtc.conf.sign debianpkg/etc/gtc
 
 cp app/*.desktop debianpkg/usr/share/applications
 cp app/*.png debianpkg/usr/share/pixmaps
