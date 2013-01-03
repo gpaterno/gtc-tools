@@ -1,0 +1,8 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=Application
+Icon=moresi
+Exec=vmware-view -q -l -s vdi.moresi.com
+Categories=Application;Network;
+Name=Moresi.Com VDI
+Comment=Access to the Virtual Desktop in Moresi.Com SA

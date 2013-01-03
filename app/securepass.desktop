@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=SecurePass
+Comment=SecurePass Web Site
+Exec=/usr/bin/chromium-browser http://www.secure-pass.nete
+Terminal=false
+X-MultipleArgs=false
+Type=Application
+Icon=securepass
+Categories=Network;WebBrowser;
