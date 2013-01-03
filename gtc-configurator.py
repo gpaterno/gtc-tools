@@ -5,7 +5,7 @@
 ##
 import os
 import uuid
- 
+import subprocess
 
 def setup_wireless(wireless):
 	
@@ -65,7 +65,7 @@ if __name__ == "__main__":
 	logger = logging.getLogger("gtc-updater")
 
 	conf = ""
-	conffiles  = ['/isodevice/gtc/gtc.conf', os.getcwd() + '/gtc.conf']
+	conffiles  = ['/isodevice/gtc/gtc.conf.sign', os.getcwd() + '/gtc.conf.sign']
 	conf_found = 0
 
 	## Get Config File
@@ -81,9 +81,11 @@ if __name__ == "__main__":
 
 	
 	try:
-		conf = json.load(open(conf))
+		p= subprocess.Popen("cat "+conf+"  | gpg", stdout=subprocess.PIPE,stderr=subprocess.PIPE ,shell=True)
+		#conf = json.load(open(conf))
+		conf = json.loads(p.stdout.read())
 	except:
-		logger.ERROR("Error loading json")
+		logger.error("Error loading json")
 		exit(0)
 
 	if conf.get("wireless") != None:
