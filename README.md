@@ -19,3 +19,6 @@ gtc.schema.override -> Ovverrides for menus
 vmware/ -> Vmware specific configurations
 
 wireless-template -> /etc/NetworkManager/system-connections
+
+To compile overlay:
+glib-compile-schemas /usr/share/glib-2.0/schemas/
