@@ -8,7 +8,7 @@ mkdir -p debianpkg/usr/share/gtc
 mkdir -p debianpkg/usr/share/applications
 mkdir -p debianpkg/usr/share/pixmaps
 mkdir -p debianpkg/usr/share/glib-2.0/schemas/
-mkdir -p /etc/skel/.vmware/
+mkdir -p debianpkg/etc/skel/.vmware/
 
 cp control debianpkg/DEBIAN/
 
@@ -25,7 +25,7 @@ cp app/*.png debianpkg/usr/share/pixmaps
 
 cp gtc.gschema.override /usr/share/glib-2.0/schemas/
 
-cp vmware/vmware-view-client.license-accepted /etc/skel/.vmware-view-client.license-accepted
-cp vmware/view-preferences /etc/skel/.vmware/view-preferences
+cp vmware/vmware-view-client.license-accepted debianpkg/etc/skel/.vmware-view-client.license-accepted
+cp vmware/view-preferences debianpkg/etc/skel/.vmware/view-preferences
 
 dpkg -b debianpkg gtc-tools.deb
