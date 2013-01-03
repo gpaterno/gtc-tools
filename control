@@ -4,7 +4,7 @@ Section: tools
 Priority: optional
 Architecture: all
 Essential: no
-Depends: python
+Depends: python, python-qt4
 Maintainer: Alessandro Lorenzi <alorenzi@garl.ch>
 Description: Installer, updater and configurer
              tools for GARL Thin Client - GTC
