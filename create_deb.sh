@@ -8,6 +8,7 @@ mkdir -p debianpkg/usr/share/gtc
 mkdir -p debianpkg/usr/share/applications
 mkdir -p debianpkg/usr/share/pixmaps
 mkdir -p debianpkg/usr/share/glib-2.0/schemas/
+mkdir -p /etc/skel/.vmware/
 
 cp control debianpkg/DEBIAN/
 
