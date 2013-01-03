@@ -1,0 +1,10 @@
+Package: gtc-tools
+Version: 1.0
+Section: tools 
+Priority: optional
+Architecture: all
+Essential: no
+Depends: python
+Maintainer: Alessandro Lorenzi <alorenzi@garl.ch>
+Description: Installer, updater and configurer
+             tools for GARL Thin Client - GTC
