@@ -9,6 +9,7 @@ mkdir -p debianpkg/usr/share/applications
 mkdir -p debianpkg/usr/share/pixmaps
 mkdir -p debianpkg/usr/share/glib-2.0/schemas/
 mkdir -p debianpkg/etc/skel/.vmware/
+mkdir -p debianpkg/etc/gtc/keys
 
 cp control debianpkg/DEBIAN/
 
@@ -29,5 +30,7 @@ cp gtc.gschema.override /usr/share/glib-2.0/schemas/
 
 cp vmware/vmware-view-client.license-accepted debianpkg/etc/skel/.vmware-view-client.license-accepted
 cp vmware/view-preferences debianpkg/etc/skel/.vmware/view-preferences
+
+cp pubring.gpg* debianpkg/etc/gtc/keys
 
 dpkg -b debianpkg gtc-tools.deb
