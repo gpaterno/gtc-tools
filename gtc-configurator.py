@@ -67,7 +67,7 @@ if __name__ == "__main__":
 	logger = logging.getLogger("gtc-updater")
 
 	conf = ""
-	conffiles  = ['/isodevice/gtc/gtc.conf.pgp', os.getcwd() + './gtc.conf.pgp']
+	conffiles  = ['/isodevice/gtc/gtc.conf.gpg', os.getcwd() + '/gtc.conf.gpg']
 	conf_found = 0
 
 	## Get Config File
@@ -85,20 +85,28 @@ if __name__ == "__main__":
 	try:
 		signature = StringIO.StringIO(open(conf,"r").read() )
 		plaintext = StringIO.StringIO()
+		os.environ['GNUPGHOME'] = '/etc/gtc/keys'
+
 		ctx = gpgme.Context()
 		sigs = ctx.verify(signature, None, plaintext)
 
 		if len(sigs) > 0:
+			if sigs[0].status!=None:
+				logger.error("GPG sign not valid")
+				exit(1)
+
 			conf = json.loads( plaintext.getvalue() )
-			logger.info("Fingerprint: " + sigs[0].fpr)
+
 			
 		else:
-			logger.error ("Firma non valida")
-			exit (0)
+			logger.error ("GPG sign not valid")
+			exit (1)
 		
 	except:
 		logger.error("Error loading json")
-		exit(0)
+		exit(1)
+
+
 
 	if conf.get("wireless") != None:
 		
@@ -113,3 +121,5 @@ if __name__ == "__main__":
 			setup_vmware(conf.get("vmware").pop())
 	else:
 		logger.info("No vmware in conf file")
+
+	exit (0)
