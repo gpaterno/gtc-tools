@@ -6,6 +6,8 @@
 import os
 import uuid
 import subprocess
+import gpgme
+import StringIO
 
 def setup_wireless(wireless):
 	
@@ -65,7 +67,7 @@ if __name__ == "__main__":
 	logger = logging.getLogger("gtc-updater")
 
 	conf = ""
-	conffiles  = ['/isodevice/gtc/gtc.conf.sign', os.getcwd() + '/gtc.conf.sign']
+	conffiles  = ['/isodevice/gtc/gtc.conf.pgp', os.getcwd() + './gtc.conf.pgp']
 	conf_found = 0
 
 	## Get Config File
@@ -81,9 +83,19 @@ if __name__ == "__main__":
 
 	
 	try:
-		p= subprocess.Popen("cat "+conf+"  | gpg", stdout=subprocess.PIPE,stderr=subprocess.PIPE ,shell=True)
-		#conf = json.load(open(conf))
-		conf = json.loads(p.stdout.read())
+		signature = StringIO.StringIO(open(conf,"r").read() )
+		plaintext = StringIO.StringIO()
+		ctx = gpgme.Context()
+		sigs = ctx.verify(signature, None, plaintext)
+
+		if len(sigs) > 0:
+			conf = json.loads( plaintext.getvalue() )
+			logger.info("Fingerprint: " + sigs[0].fpr)
+			
+		else:
+			logger.error ("Firma non valida")
+			exit (0)
+		
 	except:
 		logger.error("Error loading json")
 		exit(0)
