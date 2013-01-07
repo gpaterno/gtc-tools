@@ -302,10 +302,10 @@ def mklauncher():
 		return False
 
 	try:
-		# TODO!!!!
-		#subprocess.call(['gsettings', "get" , "com.canonical.Unity.Launcher", "favorites"])
-		
-		subprocess.call(['gsettings', "set" , "com.canonical.Unity.Launcher", "favorites", "['/usr/share/applications/gtc-update.desktop']"])
+		fh=open("./usr/share/glib-2.0/schemas/gtc-updater.gschema.override","w")
+		fh.write("[com.canonical.Unity.Launcher]\n")
+		fh.write("favorites=['nautilus-home.desktop', 'securepass.desktop', 'moresi.desktop', 'chromium-browser.desktop', 'vmware-view-client.desktop', '/usr/share/applications/gtc-update.desktop']\n")
+		fh.close()
 	except:
 		logger.error("ERROR while creating launcher")
 		return False

@@ -85,7 +85,8 @@ if __name__ == "__main__":
 	try:
 		signature = StringIO.StringIO(open(conf,"r").read() )
 		plaintext = StringIO.StringIO()
-		os.environ['GNUPGHOME'] = '/etc/gtc/keys'
+		#os.environ['GNUPGHOME'] = '/etc/gtc/keys'
+		os.environ['GNUPGHOME'] = '/home/alorenzi/tmp'
 
 		ctx = gpgme.Context()
 		sigs = ctx.verify(signature, None, plaintext)
