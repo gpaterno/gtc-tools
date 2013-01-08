@@ -1,10 +1,10 @@
 Package: gtc-tools
-Version: 1.0
+Version: 1.1
 Section: tools 
 Priority: optional
 Architecture: all
 Essential: no
-Depends: python, python-qt4
+Depends: python, python-qt4, python-gpgme
 Maintainer: Alessandro Lorenzi <alorenzi@garl.ch>
 Description: Installer, updater and configurer
              tools for GARL Thin Client - GTC

@@ -1,4 +1,5 @@
 #!/bin/sh -x
+VERSION=$(grep Version control | cut -d' ' -f 2)
 
 mkdir -p debianpkg/DEBIAN/
 mkdir -p debianpkg/usr/sbin/
@@ -12,6 +13,8 @@ mkdir -p debianpkg/etc/skel/.vmware/
 mkdir -p debianpkg/etc/gtc/keys
 
 cp control debianpkg/DEBIAN/
+cp postinst debianpkg/DEBIAN/
+cp postrm debianpkg/DEBIAN/
 
 cp gtc-configurator.py debianpkg/usr/sbin/gtc-configurator
 cp gtc-update.py debianpkg/usr/sbin/gtc-update
@@ -20,8 +23,8 @@ cp gtc-install debianpkg/usr/sbin/gtc-install
 chmod +x debianpkg/usr/sbin/*
 
 cp global.ini debianpkg/etc/gtc
-cp gtc.conf debianpkg/etc/gtc
-cp gtc.conf.gpg debianpkg/etc/gtc
+#cp gtc.conf debianpkg/etc/gtc
+#cp gtc.conf.gpg debianpkg/etc/gtc
 
 cp app/*.desktop debianpkg/usr/share/applications
 cp app/*.png debianpkg/usr/share/pixmaps
@@ -35,7 +38,7 @@ cp keys/pubring.gpg debianpkg/etc/gtc/keys
 
 cp init/gtc-configurator.conf  debianpkg/etc/init
 
-dpkg -b debianpkg gtc-tools.deb
+dpkg -b debianpkg gtc-tools-$VERSION.deb
 
 echo "Cleanup..."
 rm -rf debianpkg
