@@ -2,7 +2,7 @@
 Version=1.0
 Name=SecurePass
 Comment=SecurePass Web Site
-Exec=/usr/bin/chromium-browser http://www.secure-pass.nete
+Exec=/usr/bin/chromium-browser http://www.secure-pass.net
 Terminal=false
 X-MultipleArgs=false
 Type=Application
