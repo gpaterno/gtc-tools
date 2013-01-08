@@ -21,12 +21,12 @@ chmod +x debianpkg/usr/sbin/*
 
 cp global.ini debianpkg/etc/gtc
 cp gtc.conf debianpkg/etc/gtc
-cp gtc.conf.sign debianpkg/etc/gtc
+cp gtc.conf.gpg debianpkg/etc/gtc
 
 cp app/*.desktop debianpkg/usr/share/applications
 cp app/*.png debianpkg/usr/share/pixmaps
 
-cp gtc.gschema.override /usr/share/glib-2.0/schemas/
+cp gtc.gschema.override debianpkg/usr/share/glib-2.0/schemas/
 
 cp vmware/vmware-view-client.license-accepted debianpkg/etc/skel/.vmware-view-client.license-accepted
 cp vmware/view-preferences debianpkg/etc/skel/.vmware/view-preferences
