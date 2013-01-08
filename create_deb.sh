@@ -31,8 +31,11 @@ cp gtc.gschema.override debianpkg/usr/share/glib-2.0/schemas/
 cp vmware/vmware-view-client.license-accepted debianpkg/etc/skel/.vmware-view-client.license-accepted
 cp vmware/view-preferences debianpkg/etc/skel/.vmware/view-preferences
 
-cp keys/pubring.gpg* debianpkg/etc/gtc/keys
+cp keys/pubring.gpg debianpkg/etc/gtc/keys
 
-cp init/* debianpkg/etc/init
+cp init/gtc-configurator.conf  debianpkg/etc/init
 
 dpkg -b debianpkg gtc-tools.deb
+
+echo "Cleanup..."
+rm -rf debianpkg
