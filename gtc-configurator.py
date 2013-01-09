@@ -53,8 +53,53 @@ def setup_wireless(wireless):
 
 	
 
-def setup_vmware(wmware):
-	pass
+def setup_vmware(vmware):
+	from base64 import b64decode
+	try:
+		ident=vmware.get("id")
+		server = vmware.get("server")
+		icon =  vmware.get("icon")
+		
+	except:
+		logger.error("reading configuration")
+		return False
+
+	try:
+		iconpath= "/usr/share/pixmaps/v,ware-%s.png" % ident
+		fh=open(iconpath ,"w")
+		fh.write(b64decode(icon))
+		fh.close()
+	except:
+		logger.error("Creating icon")
+		return False	
+	
+	logger.info("start making launcher")
+	desktop_content =  "[Desktop Entry] \n"
+	desktop_content += "Name=\"connect virtual machine %s\" \n" %server
+	desktop_content += "Comment= \n"
+	desktop_content += "Exec=\"/usr/bin/vmware-viewer -s %s\" \n" %server
+	desktop_content += "Icon=\"%s\"\n" %iconpath
+	desktop_content += "Terminal=true\n"
+	desktop_content += "Type=Application\n"
+	desktop_content += "StartupNotify=true"
+	try:
+		desktop_file=open("/usr/share/applications/vmware-%s.desktop" % ident ,"w")
+		desktop_file.write(desktop_content)
+		desktop_file.close()
+	except:
+		logger.error("ERROR while writing .desktop file")
+		return False
+
+	try:
+		fh=open("/usr/share/glib-2.0/schemas/vmware-%s.gschema.override" %ident,"w")
+		fh.write("[com.canonical.Unity.Launcher]\n")
+		fh.write("favorites=['/usr/share/applications/vmware-%s.desktop']\n" %ident)
+		fh.close()
+	except:
+		logger.error("ERROR while writing schema override file")
+		return False
+		
+	logger.info("Created vmware configuration")	
 
 if __name__ == "__main__":
 	import json
@@ -85,8 +130,7 @@ if __name__ == "__main__":
 	try:
 		signature = StringIO.StringIO(open(conf,"r").read() )
 		plaintext = StringIO.StringIO()
-		#os.environ['GNUPGHOME'] = '/etc/gtc/keys'
-		os.environ['GNUPGHOME'] = '/home/alorenzi/tmp'
+		os.environ['GNUPGHOME'] = '/etc/gtc/keys'
 
 		ctx = gpgme.Context()
 		sigs = ctx.verify(signature, None, plaintext)
@@ -94,7 +138,7 @@ if __name__ == "__main__":
 		if len(sigs) > 0:
 			if sigs[0].status!=None:
 				logger.error("GPG sign not valid")
-				exit(1)
+				#exit(1)
 
 			conf = json.loads( plaintext.getvalue() )
 
