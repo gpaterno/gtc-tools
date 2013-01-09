@@ -77,7 +77,7 @@ def setup_vmware(vmware):
 	desktop_content =  "[Desktop Entry] \n"
 	desktop_content += "Name=connect virtual machine %s \n" %server
 	desktop_content += "Comment= \n"
-	desktop_content += "Exec=/usr/bin/vmware-viewer -s %s \n" %server
+	desktop_content += "Exec=/usr/bin/vmware-view -s %s \n" %server
 	desktop_content += "Icon=%s\n" %iconpath
 	desktop_content += "Type=Application\n"
 	desktop_content += "StartupNotify=true"
