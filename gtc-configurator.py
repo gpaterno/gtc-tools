@@ -65,7 +65,7 @@ def setup_vmware(vmware):
 		return False
 
 	try:
-		iconpath= "/usr/share/pixmaps/v,ware-%s.png" % ident
+		iconpath= "/usr/share/pixmaps/vmware-%s.png" % ident
 		fh=open(iconpath ,"w")
 		fh.write(b64decode(icon))
 		fh.close()
@@ -75,11 +75,10 @@ def setup_vmware(vmware):
 	
 	logger.info("start making launcher")
 	desktop_content =  "[Desktop Entry] \n"
-	desktop_content += "Name=\"connect virtual machine %s\" \n" %server
+	desktop_content += "Name=connect virtual machine %s \n" %server
 	desktop_content += "Comment= \n"
-	desktop_content += "Exec=\"/usr/bin/vmware-viewer -s %s\" \n" %server
-	desktop_content += "Icon=\"%s\"\n" %iconpath
-	desktop_content += "Terminal=true\n"
+	desktop_content += "Exec=/usr/bin/vmware-viewer -s %s \n" %server
+	desktop_content += "Icon=%s\n" %iconpath
 	desktop_content += "Type=Application\n"
 	desktop_content += "StartupNotify=true"
 	try:
