@@ -82,21 +82,13 @@ def setup_vmware(vmware):
 	desktop_content += "Type=Application\n"
 	desktop_content += "StartupNotify=true"
 	try:
-		desktop_file=open("/usr/share/applications/vmware-%s.desktop" % ident ,"w")
+		desktop_file=open("/etc/skel/.local/share/applications/vmware-%s.desktop" % ident ,"w")
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
-		logger.error("ERROR while writing .desktop file")
+		logger.error("ERROR while writing desktop file")
 		return False
 
-	try:
-		fh=open("/usr/share/glib-2.0/schemas/vmware-%s.gschema.override" %ident,"w")
-		fh.write("[com.canonical.Unity.Launcher]\n")
-		fh.write("favorites=['/usr/share/applications/vmware-%s.desktop']\n" %ident)
-		fh.close()
-	except:
-		logger.error("ERROR while writing schema override file")
-		return False
 		
 	logger.info("Created vmware configuration")	
 

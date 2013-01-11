@@ -294,21 +294,15 @@ def mklauncher():
 	logger.info("start making launcher")
 	desktop_content = "[Desktop Entry] \nName=Update the system \nComment= \nExec=/usr/sbin/gtc-update -i \nIcon=/usr/share/pixmaps/garl.png\nTerminal=true\nType=Application\nStartupNotify=true"
 	try:
-		desktop_file=open("/usr/share/applications/gtc-update.desktop","w")
+		desktop_file=open("/etc/skel/.local/share/applications/gtc-update.desktop","w")
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
-		logger.error("ERROR while writing .desktop file")
+		logger.error("ERROR while writing desktop file")
 		return False
 
-	try:
-		fh=open("/usr/share/glib-2.0/schemas/gtc-updater.gschema.override","w")
-		fh.write("[com.canonical.Unity.Launcher]\n")
-		fh.write("favorites=['/usr/share/applications/gtc-update.desktop']\n")
-		fh.close()
-	except:
-		logger.error("ERROR while creating launcher")
-		return False
+
+
 	return True
 
 
