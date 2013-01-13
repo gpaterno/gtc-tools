@@ -1,8 +1,12 @@
 #!/usr/bin/env python
 ##
 ## GTC Configuration tool
-## This automatically configures wireless and desktop links
+## ====================
 ##
+## This automatically configures wireless and desktop links for vmware
+## Takes settings from a json file signed with PGP.
+##
+
 import os
 import uuid
 import subprocess
@@ -10,6 +14,9 @@ import gpgme
 import StringIO
 
 def setup_wireless(wireless):
+	# method to configure wireless. Accept an argument,
+	# a dictionary [essid, type, psk]
+	# at the moment this accept only open or wpa/psk wireless.
 	
 	try:
 		essid=wireless.get("essid")
@@ -29,6 +36,8 @@ def setup_wireless(wireless):
 	
 
 	try:
+		# Writing Network Manager conf
+		
 		filename="/etc/NetworkManager/system-connections/%s" % essid
 		fh = open(filename, "w")
 		fh.write("[connection]\n")
@@ -54,7 +63,13 @@ def setup_wireless(wireless):
 	
 
 def setup_vmware(vmware):
+	# method to configure vmware links in left bar. Accept an argument,
+	# a dictionary [id, server, icon]
+	# at the moment this accept only open or wpa/psk wireless.
+	
 	from base64 import b64decode
+
+
 	try:
 		ident=vmware.get("id")
 		server = vmware.get("server")
@@ -65,6 +80,8 @@ def setup_vmware(vmware):
 		return False
 
 	try:
+		# vmware["icon"] is a png encoded in base64.
+		# We have to decode and save it in an image.
 		iconpath= "/usr/share/pixmaps/vmware-%s.png" % ident
 		fh=open(iconpath ,"w")
 		fh.write(b64decode(icon))
@@ -72,7 +89,8 @@ def setup_vmware(vmware):
 	except:
 		logger.error("Creating icon")
 		return False	
-	
+
+	# making desktop file
 	logger.info("start making launcher")
 	desktop_content =  "[Desktop Entry] \n"
 	desktop_content += "Name=connect virtual machine %s \n" %server
@@ -81,6 +99,12 @@ def setup_vmware(vmware):
 	desktop_content += "Icon=%s\n" %iconpath
 	desktop_content += "Type=Application\n"
 	desktop_content += "StartupNotify=true"
+	# Write desktop file in /etc/skel 
+	try:
+		os.makedirs("/etc/skel/.local/share/applications/")
+	except:
+		# if dir yet exists ignore the problem
+		pass
 	try:
 		desktop_file=open("/etc/skel/.local/share/applications/vmware-%s.desktop" % ident ,"w")
 		desktop_file.write(desktop_content)
@@ -92,7 +116,10 @@ def setup_vmware(vmware):
 		
 	logger.info("Created vmware configuration")	
 
+
+
 if __name__ == "__main__":
+	# STARTS HERE
 	import json
 	import logging
 	
@@ -102,11 +129,11 @@ if __name__ == "__main__":
 	global logger
 	logger = logging.getLogger("gtc-updater")
 
+	# Get Config File
 	conf = ""
 	conffiles  = ['/isodevice/gtc/gtc.conf.gpg', os.getcwd() + '/gtc.conf.gpg']
 	conf_found = 0
 
-	## Get Config File
 	for tconf in conffiles:
 		if os.path.isfile(tconf):
 			conf   = tconf
@@ -117,7 +144,7 @@ if __name__ == "__main__":
 		exit (0)
 
 
-	
+	# verify PGP signature. 
 	try:
 		signature = StringIO.StringIO(open(conf,"r").read() )
 		plaintext = StringIO.StringIO()
@@ -143,7 +170,7 @@ if __name__ == "__main__":
 		exit(1)
 
 
-
+	# takes wireless config and call setup_wireless
 	if conf.get("wireless") != None:
 		
 		while len(conf.get("wireless"))>0:
@@ -152,10 +179,12 @@ if __name__ == "__main__":
 	else:
 		logger.info("No wireless in conf file")
 
+	# takes wireless config and call setup_wireless
 	if conf.get("vmware") != None:
 		while len(  conf.get("vmware")) >0:
 			setup_vmware(conf.get("vmware").pop())
 	else:
 		logger.info("No vmware in conf file")
+
 
 	exit (0)

@@ -71,7 +71,7 @@ permission(){
 }
 
 set_options(){
-
+	# getting options from command line
 	while getopts ":d:i:t:c:" opt; do
 		case $opt in
 		d)
@@ -180,7 +180,7 @@ downloadconf(){
 }
 
 ckiso(){
-	#sha1iso=`sha1sum $tmp/dwnld/$isoname| cut -f 1 -d " "`
+
 	sha1iso=`sha1sum $iso| cut -f 1 -d " "`
 	sha1conf=`cat $conf | grep sha1 | cut -f2 -d "=" |  sed 's/^ *//g' | sed 's/ *$//g'`
 	if [[ "x$sha1iso" != "x$sha1conf" ]]

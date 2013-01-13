@@ -134,14 +134,7 @@ def dl_progress(download_t, download_d, upload_t, upload_d):
 	    percentage = float(download_d)*100/float(download_t)
 	    print "Downloading: %s%% \r" % int(percentage),
 
-def dl_qt_progress(download_t, download_d, upload_t, upload_d):
-	# Function for pycurl
-	# TODO: all
-	if float(download_t) != 0:
-		global percentage
-		percentage = float(download_d)*100/float(download_t)
-		print "Downloading: %s%% \r" % int(percentage),
-	    
+    
 
 def download_config():
 	# download release file
@@ -193,8 +186,8 @@ def create_tmpdir(base=None):
 def ckrelease():
 	# control if local release is old
 	# return value  0 error
-	#               1 installed current release
-	#               2 installed an old release
+	#               1 the system is running current release
+	#               2 the system is running an old release
 	logger.debug("Comparing %s with %s/%s" % (localrelease, tmpdir, releasename))
 
 	try:
@@ -220,7 +213,7 @@ def ckrelease():
 	print("Your release is old.")
 	return (True)
 
-def downloadiso(qt=False):
+def downloadiso():
 	# download ISO from server
 	try:
 		logger.debug("Attempting to download ISO from %s" % remoteiso )
@@ -228,10 +221,7 @@ def downloadiso(qt=False):
 		dwnld = pycurl.Curl()
 		dwnld.setopt(pycurl.URL, remoteiso)
 		dwnld.setopt(pycurl.NOPROGRESS, 0)
-		if qt==True:
-			dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
-		else:
-			dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_qt_progress)
+		dwnld.setopt(pycurl.PROGRESSFUNCTION, dl_progress)
 		dwnld.setopt(pycurl.WRITEDATA, iso)
 		dwnld.perform()
 		print ""		# print empty line
@@ -293,6 +283,13 @@ def replace_iso():
 def mklauncher():
 	logger.info("start making launcher")
 	desktop_content = "[Desktop Entry] \nName=Update the system \nComment= \nExec=/usr/sbin/gtc-update -i \nIcon=/usr/share/pixmaps/garl.png\nTerminal=true\nType=Application\nStartupNotify=true"
+	# Write desktop file in /etc/skel
+	try:
+		os.makedirs("/etc/skel/.local/share/applications/")
+	except:
+		# if dir yet exists ignore the problem
+		pass
+		
 	try:
 		desktop_file=open("/etc/skel/.local/share/applications/gtc-update.desktop","w")
 		desktop_file.write(desktop_content)
@@ -307,6 +304,8 @@ def mklauncher():
 
 
 def cmdline():
+	# OLD
+	# exec all in a command line.
 	## Loading config
 	getconf()
 	## Welcome msg and warning
@@ -329,14 +328,18 @@ def cmdline():
 
 
 def helper():
+	# print a helper
 	logger.error("TODO helper")
+	logger.error("gtc-updater [-c] [-i] [-h]")
+	logger.error(" -c Check updates and if updates are presents create a desktop icon")
+	logger.error(" -i Install updates")
+	logger.error(" -h This message")
 	exit(1)
 
 def check_updates():
 	print "halo"
 	# check if updates are available  
 	## Loading config
-	## Welcome msg and warning
 	logger.info("Checking for upgrades, make sure you're connected to the network and you have your power adapter connected.")
 
 	if getconf()==False:
@@ -414,21 +417,29 @@ def install_updates():
 	
 	exit(0)
 
-## Setup logging first
-logfmt = " %(levelname)s: %(message)s"
-logging.basicConfig(format=logfmt, level=logging.DEBUG)
-global logger
-logger = logging.getLogger("gtc-updater")
+
+
+
 
 
 if __name__ == "__main__":
+	# STARTS HERE
 	import sys
 	import os
 	import subprocess
 	import optparse
 
 	
-	## parsing opts
+	## Setup logging first
+	logfmt = " %(levelname)s: %(message)s"
+	logging.basicConfig(format=logfmt, level=logging.DEBUG)
+	global logger
+	logger = logging.getLogger("gtc-updater")
+
+	
+	# parsing opts
+	# -c Check updates and if updates are presents create a desktop icon
+	# -i Install updates
 	parser = optparse.OptionParser()
 	parser.add_option("-c", nargs=0)
 	parser.add_option("-i", nargs=0)
