@@ -36,7 +36,7 @@ from ctypes import *
 from time import sleep
 from tempfile import mkdtemp
 import ConfigParser
-	
+import re
 
 
 def getconf():
@@ -283,22 +283,36 @@ def replace_iso():
 def mklauncher():
 	logger.info("start making launcher")
 	desktop_content = "[Desktop Entry] \nName=Update the system \nComment= \nExec=/usr/sbin/gtc-update -i \nIcon=/usr/share/pixmaps/garl.png\nTerminal=true\nType=Application\nStartupNotify=true"
-	# Write desktop file in /etc/skel
-	try:
-		os.makedirs("/etc/skel/.local/share/applications/")
-	except:
-		# if dir yet exists ignore the problem
-		pass
+
+	
 		
 	try:
-		desktop_file=open("/etc/skel/.local/share/applications/gtc-update.desktop","w")
+		desktop_file=open("/usr/share/applications/gtc-update.desktop","w")
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
 		logger.error("ERROR while writing desktop file")
 		return False
 
+	try:
+		# Modify gtc.gschema.override
+		gschema_file=open("/usr/share/glib-2.0/schemas/gtc.gschema.override", "r")
+		newcontent = ""
+		for line in gschema_file:
+				fav = re.search("favorites", line)
+				yetexists =  re.search("'gtc-update.desktop'", line)
+				# modify line "favorites" if gtc-update.desktop not exists 
+				if fav!= None and yetexists == None:
+						line = re.sub("]", ", 'gtc-update.desktop']",line)
+				newcontent+=line
+		gschema_file.close()
 
+		# writing new gtc.gschema.override
+		gschema_file=open("/usr/share/glib-2.0/schemas/gtc.gschema.override", "w")
+		gschema_file.write(newcontent)
+		gschema_file.close()
+	except:
+		logger.error("ERROR while writing gtc.gschema.override")
 
 	return True
 

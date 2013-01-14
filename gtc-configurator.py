@@ -12,6 +12,7 @@ import uuid
 import subprocess
 import gpgme
 import StringIO
+import re
 
 def setup_wireless(wireless):
 	# method to configure wireless. Accept an argument,
@@ -99,20 +100,35 @@ def setup_vmware(vmware):
 	desktop_content += "Icon=%s\n" %iconpath
 	desktop_content += "Type=Application\n"
 	desktop_content += "StartupNotify=true"
-	# Write desktop file in /etc/skel 
+	
 	try:
-		os.makedirs("/etc/skel/.local/share/applications/")
-	except:
-		# if dir yet exists ignore the problem
-		pass
-	try:
-		desktop_file=open("/etc/skel/.local/share/applications/vmware-%s.desktop" % ident ,"w")
+		desktop_file=open("/usr/share/applications/vmware-%s.desktop" % ident ,"w")
 		desktop_file.write(desktop_content)
 		desktop_file.close()
 	except:
 		logger.error("ERROR while writing desktop file")
 		return False
 
+	try:
+		# Modify gtc.gschema.override
+		gschema_file=open("/usr/share/glib-2.0/schemas/gtc.gschema.override", "r")
+		newcontent = ""
+		for line in gschema_file:
+				fav = re.search("favorites", line)
+				yetexists =  re.search("'vmware-%s.desktop'" % ident, line)
+				# modify line "favorites" if vmware-*.desktop not exists 
+				if fav!= None and yetexists == None:
+					line = re.sub("]", ", 'vmware-%s.desktop']" % ident ,line)
+				newcontent+=line
+		gschema_file.close()
+
+		# writing new gtc.gschema.override
+		gschema_file=open("/usr/share/glib-2.0/schemas/gtc.gschema.override", "w")
+		gschema_file.write(newcontent)
+		gschema_file.close()
+	except:
+		logger.error("ERROR while writing gtc.gschema.override")
+		return False
 		
 	logger.info("Created vmware configuration")	
 
@@ -179,7 +195,7 @@ if __name__ == "__main__":
 	else:
 		logger.info("No wireless in conf file")
 
-	# takes wireless config and call setup_wireless
+	# takes vmware config and call setup_vmware
 	if conf.get("vmware") != None:
 		while len(  conf.get("vmware")) >0:
 			setup_vmware(conf.get("vmware").pop())
