@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh 
 VERSION=$(grep Version control | cut -d' ' -f 2)
 
 mkdir -p debianpkg/DEBIAN/
@@ -10,6 +10,7 @@ mkdir -p debianpkg/usr/share/applications
 mkdir -p debianpkg/usr/share/pixmaps
 mkdir -p debianpkg/usr/share/glib-2.0/schemas/
 mkdir -p debianpkg/etc/skel/.vmware/
+mkdir -p debianpkg/etc/skel/.local/share/applications/
 mkdir -p debianpkg/etc/gtc/keys
 
 cp control debianpkg/DEBIAN/
@@ -36,7 +37,7 @@ cp vmware/view-preferences debianpkg/etc/skel/.vmware/view-preferences
 
 cp keys/pubring.gpg debianpkg/etc/gtc/keys
 
-cp init/gtc-configurator.conf  debianpkg/etc/init
+cp init/*  debianpkg/etc/init
 
 dpkg -b debianpkg gtc-tools-$VERSION.deb
 
