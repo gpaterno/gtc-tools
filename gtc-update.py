@@ -313,6 +313,13 @@ def mklauncher():
 		gschema_file.close()
 	except:
 		logger.error("ERROR while writing gtc.gschema.override")
+		return False
+
+	try:
+		subprocess.call("glib-compile-schemas /usr/share/glib-2.0/schemas/")
+	except:
+		logger.error("error while compiling glib schema")
+		return False
 
 	return True
 

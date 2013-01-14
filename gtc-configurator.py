@@ -129,6 +129,12 @@ def setup_vmware(vmware):
 	except:
 		logger.error("ERROR while writing gtc.gschema.override")
 		return False
+
+	try:
+		subprocess.call("glib-compile-schemas /usr/share/glib-2.0/schemas/")
+	except:
+		logger.error("error while compiling glib schema")
+		return False
 		
 	logger.info("Created vmware configuration")	
 
